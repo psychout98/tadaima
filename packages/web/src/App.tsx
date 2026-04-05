@@ -7,9 +7,10 @@ import { ProfilePicker } from "./pages/ProfilePicker";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminPanel } from "./pages/AdminPanel";
 import { AppShell } from "./pages/AppShell";
-import { DownloadsPage } from "./pages/Placeholder";
 import { SearchPage } from "./pages/SearchPage";
+import { DownloadsPage } from "./pages/DownloadsPage";
 import { DevicesPage } from "./pages/DevicesPage";
+import { SettingsPage } from "./pages/SettingsPage";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ function AppRoutes() {
             <Route index element={<SearchPage />} />
             <Route path="downloads" element={<DownloadsPage />} />
             <Route path="devices" element={<DevicesPage />} />
+            <Route path="settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/profiles" replace />} />
         </>

@@ -283,4 +283,44 @@ export const api = {
         body: JSON.stringify(data),
       }, token),
   },
+
+  downloads: {
+    list: (token: string, status?: string) => {
+      const params = status ? `?status=${status}` : "";
+      return request<
+        Array<{
+          id: string;
+          title: string;
+          mediaType: string;
+          sizeBytes: number | null;
+          status: string;
+          error: string | null;
+          retryable: boolean | null;
+          startedAt: string;
+          completedAt: string | null;
+        }>
+      >(`/api/downloads${params}`, {}, token);
+    },
+    queue: (token: string) =>
+      request<
+        Array<{
+          id: string;
+          payload: Record<string, unknown>;
+          status: string;
+          createdAt: string;
+        }>
+      >("/api/downloads/queue", {}, token),
+    cancelQueued: (id: string, token: string) =>
+      request<{ success: boolean }>(
+        `/api/downloads/queue/${id}`,
+        { method: "DELETE" },
+        token,
+      ),
+    deleteHistory: (id: string, token: string) =>
+      request<{ success: boolean }>(
+        `/api/downloads/${id}`,
+        { method: "DELETE" },
+        token,
+      ),
+  },
 };

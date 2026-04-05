@@ -1,7 +1,8 @@
 import { useEffect } from "react";
-import { Link, Outlet, useNavigate } from "react-router";
+import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import { useAuthStore } from "../lib/store";
 import { wsClient } from "../lib/ws-client";
+import { Toasts } from "../components/Toasts";
 
 const STATUS_CONFIG = {
   connected: { color: "bg-emerald-400", label: "Connected" },
@@ -11,6 +12,7 @@ const STATUS_CONFIG = {
 
 export function AppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     profile,
     profileToken,
@@ -18,21 +20,66 @@ export function AppShell() {
     connectionStatus,
     setConnectionStatus,
     updateDeviceStatus,
+    setActiveDownload,
+    removeActiveDownload,
+    addToast,
   } = useAuthStore();
 
-  // Connect WebSocket when profile is selected
+  // Connect WebSocket and wire event handlers
   useEffect(() => {
     if (!profileToken) return;
 
     const unsubStatus = wsClient.onStatusChange(setConnectionStatus);
     const unsubMessage = wsClient.onMessage((msg) => {
-      if (msg.type === "device:status") {
-        const payload = msg.payload as {
-          deviceId: string;
-          isOnline: boolean;
-          lastSeenAt: number;
-        };
-        updateDeviceStatus(payload.deviceId, payload.isOnline, payload.lastSeenAt);
+      const type = msg.type as string;
+      const payload = msg.payload as Record<string, unknown>;
+
+      if (type === "device:status") {
+        updateDeviceStatus(
+          payload.deviceId as string,
+          payload.isOnline as boolean,
+          payload.lastSeenAt as number,
+        );
+      } else if (type === "download:accepted") {
+        addToast("info", `Download started: ${payload.title ?? "Unknown"}`);
+        setActiveDownload({
+          jobId: payload.jobId as string,
+          requestId: payload.requestId as string,
+          title: (payload.title as string) ?? "Unknown",
+          mediaType: "",
+          phase: "adding",
+          progress: 0,
+        });
+      } else if (type === "download:progress") {
+        setActiveDownload({
+          jobId: payload.jobId as string,
+          requestId: "",
+          title: "",
+          mediaType: "",
+          phase: payload.phase as string,
+          progress: payload.progress as number,
+          downloadedBytes: payload.downloadedBytes as number | undefined,
+          totalBytes: payload.totalBytes as number | undefined,
+          speedBps: payload.speedBps as number | undefined,
+          eta: payload.eta as number | undefined,
+        });
+      } else if (type === "download:completed") {
+        removeActiveDownload(payload.jobId as string);
+        const meta = payload._meta as Record<string, unknown> | undefined;
+        const title = meta?.title ?? "Download";
+        addToast("success", `ただいま — ${title} has arrived`);
+      } else if (type === "download:failed") {
+        removeActiveDownload(payload.jobId as string);
+        const meta = payload._meta as Record<string, unknown> | undefined;
+        const title = meta?.title ?? "Download";
+        addToast("error", `Download failed: ${title} — ${payload.error}`);
+      } else if (type === "download:queued") {
+        addToast(
+          "info",
+          `Queued: ${payload.title} — will download when ${payload.deviceName} is online`,
+        );
+      } else if (type === "download:rejected") {
+        addToast("error", `Download rejected: ${payload.reason}`);
       }
     });
 
@@ -43,7 +90,14 @@ export function AppShell() {
       unsubStatus();
       unsubMessage();
     };
-  }, [profileToken, setConnectionStatus, updateDeviceStatus]);
+  }, [
+    profileToken,
+    setConnectionStatus,
+    updateDeviceStatus,
+    setActiveDownload,
+    removeActiveDownload,
+    addToast,
+  ]);
 
   if (!profile) {
     navigate("/profiles");
@@ -60,6 +114,8 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-white">
+      <Toasts />
+
       {/* Sidebar */}
       <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950">
         {/* Profile header */}
@@ -82,9 +138,22 @@ export function AppShell() {
 
         {/* Nav links */}
         <nav className="flex-1 p-3">
-          <NavLink to="/" label="Search" />
-          <NavLink to="/downloads" label="Downloads" />
-          <NavLink to="/devices" label="Devices" />
+          <NavLink to="/" label="Search" active={location.pathname === "/"} />
+          <NavLink
+            to="/downloads"
+            label="Downloads"
+            active={location.pathname === "/downloads"}
+          />
+          <NavLink
+            to="/devices"
+            label="Devices"
+            active={location.pathname === "/devices"}
+          />
+          <NavLink
+            to="/settings"
+            label="Settings"
+            active={location.pathname === "/settings"}
+          />
         </nav>
 
         {/* Connection status */}
@@ -104,11 +173,23 @@ export function AppShell() {
   );
 }
 
-function NavLink({ to, label }: { to: string; label: string }) {
+function NavLink({
+  to,
+  label,
+  active,
+}: {
+  to: string;
+  label: string;
+  active: boolean;
+}) {
   return (
     <Link
       to={to}
-      className="block rounded-lg px-3 py-2 text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white"
+      className={`block rounded-lg px-3 py-2 text-sm ${
+        active
+          ? "bg-zinc-800 font-medium text-white"
+          : "text-zinc-400 hover:bg-zinc-900 hover:text-white"
+      }`}
     >
       {label}
     </Link>
