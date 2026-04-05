@@ -157,4 +157,47 @@ export const api = {
         token,
       ),
   },
+
+  devices: {
+    list: (token: string) =>
+      request<
+        Array<{
+          id: string;
+          name: string;
+          platform: string;
+          isOnline: boolean;
+          isDefault: boolean;
+          lastSeenAt: string | null;
+          createdAt: string;
+        }>
+      >("/api/devices", {}, token),
+    update: (
+      id: string,
+      data: { name?: string; isDefault?: boolean },
+      token: string,
+    ) =>
+      request<{
+        id: string;
+        name: string;
+        platform: string;
+        isOnline: boolean;
+        isDefault: boolean;
+      }>(
+        `/api/devices/${id}`,
+        { method: "PATCH", body: JSON.stringify(data) },
+        token,
+      ),
+    delete: (id: string, token: string) =>
+      request<{ success: boolean }>(
+        `/api/devices/${id}`,
+        { method: "DELETE" },
+        token,
+      ),
+    pairRequest: (token: string) =>
+      request<{ code: string; expiresAt: string }>(
+        "/api/devices/pair/request",
+        { method: "POST" },
+        token,
+      ),
+  },
 };

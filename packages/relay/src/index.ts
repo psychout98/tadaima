@@ -6,6 +6,8 @@ import { setup } from "./routes/setup.js";
 import { auth } from "./routes/auth.js";
 import { profileRoutes } from "./routes/profiles.js";
 import { settings } from "./routes/settings.js";
+import { deviceRoutes } from "./routes/devices.js";
+import { agentConfig } from "./routes/agent-config.js";
 
 const app = new Hono();
 
@@ -19,6 +21,8 @@ app.route("/api/setup", setup);
 app.route("/api/auth", auth);
 app.route("/api/profiles", profileRoutes);
 app.route("/api/admin/settings", settings);
+app.route("/api/devices", deviceRoutes);
+app.route("/api/agent", agentConfig);
 
 // Global error handler
 app.onError((err, c) => {
