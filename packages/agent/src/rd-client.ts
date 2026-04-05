@@ -8,14 +8,45 @@ function getHeaders(): Record<string, string> {
   };
 }
 
+async function refreshRdKey(): Promise<boolean> {
+  const relay = config.get("relay");
+  const deviceToken = config.get("deviceToken");
+  if (!relay || !deviceToken) return false;
+
+  try {
+    const res = await fetch(`${relay}/api/agent/config`, {
+      headers: { Authorization: `Bearer ${deviceToken}` },
+    });
+    if (!res.ok) return false;
+    const data = (await res.json()) as { rdApiKey: string };
+    if (data.rdApiKey) {
+      config.set("realDebrid.apiKey", data.rdApiKey);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 async function rdFetch(
   path: string,
   opts: RequestInit = {},
+  _retried = false,
 ): Promise<Response> {
   const res = await fetch(`${BASE_URL}${path}`, {
     ...opts,
     headers: { ...getHeaders(), ...(opts.headers as Record<string, string>) },
   });
+
+  // RD key rotation: on 401/403, try fetching a fresh key from relay
+  if ((res.status === 401 || res.status === 403) && !_retried) {
+    const refreshed = await refreshRdKey();
+    if (refreshed) {
+      return rdFetch(path, opts, true);
+    }
+  }
+
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(`RD API error ${res.status}: ${body}`);

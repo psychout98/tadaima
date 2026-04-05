@@ -7,7 +7,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src/ --ignore-pattern src/__tests__/",
-    "test": "echo \"No tests yet\"",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "start": "node dist/index.js"
   },
