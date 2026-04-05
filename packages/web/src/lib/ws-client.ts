@@ -1,7 +1,13 @@
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 type MessageHandler = (message: Record<string, unknown>) => void;
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+function getWsUrl(): string {
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) return apiUrl.replace(/^http/, "ws").replace(/\/$/, "");
+  // In production, derive from current origin
+  const proto = window.location.protocol === "https:" ? "wss" : "ws";
+  return `${proto}://${window.location.host}`;
+}
 
 class WebSocketClient {
   private ws: WebSocket | null = null;
@@ -18,7 +24,7 @@ class WebSocketClient {
     this.stopped = false;
     this.setStatus("connecting");
 
-    const wsUrl = API_URL.replace(/^http/, "ws").replace(/\/$/, "");
+    const wsUrl = getWsUrl();
     const url = `${wsUrl}/ws?token=${token}`;
 
     this.ws = new WebSocket(url);

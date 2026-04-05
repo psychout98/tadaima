@@ -1,7 +1,11 @@
-import "dotenv/config";
+try {
+  await import("dotenv/config");
+} catch {
+  // dotenv not available in production — that's fine
+}
+
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { serveStatic } from "@hono/node-server/serve-static";
 import { serve } from "@hono/node-server";
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -59,12 +63,45 @@ app.route("/api/downloads", downloadRoutes);
 
 // ── Static file serving (production) ───────────────────────────
 
-const webDistPath = join(__dirname, "../../web/dist");
-if (existsSync(webDistPath)) {
-  app.use("/*", serveStatic({ root: webDistPath }));
+// Find the web dist folder — works both in dev and Docker
+const webDistCandidates = [
+  join(__dirname, "../../web/dist"),           // dev: from packages/relay/src
+  join(__dirname, "../web/dist"),              // docker: from packages/relay/dist
+  join(process.cwd(), "packages/web/dist"),    // cwd fallback
+];
 
-  // SPA fallback — serve index.html for non-API, non-file routes
+const webDistPath = webDistCandidates.find((p) => existsSync(p));
+
+if (webDistPath) {
+  // Serve static files with the absolute path via a custom handler
+  app.get("/assets/*", async (c) => {
+    const filePath = join(webDistPath, c.req.path);
+    try {
+      const content = readFileSync(filePath);
+      const ext = c.req.path.split(".").pop() ?? "";
+      const types: Record<string, string> = {
+        js: "application/javascript",
+        css: "text/css",
+        html: "text/html",
+        json: "application/json",
+        svg: "image/svg+xml",
+        png: "image/png",
+        jpg: "image/jpeg",
+        ico: "image/x-icon",
+      };
+      c.header("Content-Type", types[ext] ?? "application/octet-stream");
+      c.header("Cache-Control", "public, max-age=31536000, immutable");
+      return c.body(content as unknown as ReadableStream);
+    } catch {
+      return c.notFound();
+    }
+  });
+
+  // SPA fallback — serve index.html for non-API routes
   app.get("*", (c) => {
+    if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/ws")) {
+      return c.notFound();
+    }
     try {
       const html = readFileSync(join(webDistPath, "index.html"), "utf-8");
       return c.html(html);
