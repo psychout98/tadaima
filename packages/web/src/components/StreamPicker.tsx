@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api";
 import { useAuthStore } from "../lib/store";
+import { wsClient } from "../lib/ws-client";
 
 interface SearchResult {
   tmdbId: number;
@@ -356,7 +357,31 @@ export function StreamPicker({
                       {formatSize(s.size)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <button className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500">
+                      <button
+                        onClick={() => {
+                          const msgId = `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+                          wsClient.send({
+                            id: msgId,
+                            type: "download:request",
+                            timestamp: Date.now(),
+                            targetDeviceId: selectedDevice || undefined,
+                            payload: {
+                              tmdbId: result.tmdbId,
+                              imdbId: imdbId ?? "",
+                              title: result.title,
+                              year: result.year ?? 0,
+                              mediaType: result.mediaType,
+                              season: selectedSeason ?? undefined,
+                              episode: selectedEpisode ?? undefined,
+                              episodeTitle: undefined,
+                              magnet: s.magnet,
+                              torrentName: s.title,
+                              expectedSize: s.size ?? 0,
+                            },
+                          });
+                        }}
+                        className="rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-500"
+                      >
                         Download
                       </button>
                     </td>

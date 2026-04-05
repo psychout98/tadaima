@@ -10,6 +10,7 @@ import { deviceRoutes } from "./routes/devices.js";
 import { agentConfig } from "./routes/agent-config.js";
 import { proxy } from "./routes/proxy.js";
 import { recentlyViewedRoutes } from "./routes/recently-viewed.js";
+import { downloadRoutes } from "./routes/downloads.js";
 import { attachWebSocket } from "./ws/handler.js";
 import { startStaleReaper } from "./ws/pool.js";
 
@@ -29,6 +30,7 @@ app.route("/api/devices", deviceRoutes);
 app.route("/api/agent", agentConfig);
 app.route("/api", proxy);
 app.route("/api/recently-viewed", recentlyViewedRoutes);
+app.route("/api/downloads", downloadRoutes);
 
 // Global error handler
 app.onError((err, c) => {

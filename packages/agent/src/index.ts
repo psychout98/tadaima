@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { runSetup } from "./setup.js";
 import { AgentWebSocket } from "./ws-client.js";
+import { DownloadHandler } from "./download-handler.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -16,8 +17,19 @@ if (command === "setup") {
 } else if (command === "start") {
   console.log(`tadaima-agent v${pkg.version}`);
   const ws = new AgentWebSocket();
+  const handler = new DownloadHandler(ws);
+
   ws.setMessageHandler((msg) => {
-    console.log("Received:", msg.type);
+    const type = msg.type as string;
+    if (type === "download:request") {
+      handler.handleRequest(msg);
+    } else if (type === "download:cancel") {
+      handler.handleCancel(msg);
+    } else if (type === "cache:check") {
+      handler.handleCacheCheck(msg);
+    } else {
+      console.log("Received:", type);
+    }
   });
   ws.connect();
 

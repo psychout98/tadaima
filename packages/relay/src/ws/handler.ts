@@ -15,6 +15,11 @@ import { messageSchema } from "@tadaima/shared";
 import { db } from "../db.js";
 import { devices } from "@tadaima/shared";
 import { eq, and } from "drizzle-orm";
+import {
+  queueDownload,
+  deliverQueuedDownloads,
+  recordDownloadHistory,
+} from "./queue.js";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function attachWebSocket(server: any): void {
@@ -111,7 +116,45 @@ function handleAgentConnection(
 
       if (message.type === "agent:hello") {
         handleHeartbeat(profileId, deviceId);
-        return; // Consumed by relay
+        // Deliver any queued downloads
+        deliverQueuedDownloads(profileId, deviceId).catch(console.error);
+        return;
+      }
+
+      // Record completed/failed downloads in history
+      if (
+        message.type === "download:completed" ||
+        message.type === "download:failed"
+      ) {
+        // History recording is best-effort
+        const p = message.payload as Record<string, unknown>;
+        if (p._meta) {
+          const meta = p._meta as Record<string, unknown>;
+          recordDownloadHistory(profileId, deviceId, {
+            tmdbId: meta.tmdbId as number,
+            imdbId: meta.imdbId as string,
+            title: meta.title as string,
+            year: meta.year as number,
+            mediaType: meta.mediaType as string,
+            season: meta.season as number | undefined,
+            episode: meta.episode as number | undefined,
+            episodeTitle: meta.episodeTitle as string | undefined,
+            magnet: meta.magnet as string,
+            torrentName: meta.torrentName as string,
+            expectedSize: meta.expectedSize as number,
+            sizeBytes:
+              message.type === "download:completed"
+                ? (p.finalSize as number)
+                : undefined,
+            status:
+              message.type === "download:completed" ? "completed" : "failed",
+            error: message.type === "download:failed" ? (p.error as string) : undefined,
+            retryable:
+              message.type === "download:failed"
+                ? (p.retryable as boolean)
+                : undefined,
+          }).catch(console.error);
+        }
       }
 
       // All other agent events → broadcast to profile's web clients
@@ -175,8 +218,34 @@ function handleClientConnection(ws: WebSocket, profileId: string): void {
 
         if (agent && agent.ws.readyState === 1) {
           agent.ws.send(JSON.stringify(message));
+        } else if (message.type === "download:request") {
+          // Agent offline — queue the download
+          const deviceIdToQueue = targetDeviceId ?? (await db
+            .select({ id: devices.id })
+            .from(devices)
+            .where(and(eq(devices.profileId, profileId), eq(devices.isDefault, true)))
+            .limit(1)
+            .then((r) => r[0]?.id));
+
+          if (deviceIdToQueue) {
+            const payload = message.payload as Record<string, unknown>;
+            await queueDownload(
+              profileId,
+              deviceIdToQueue,
+              raw as Record<string, unknown>,
+              raw.id as string,
+              (payload.title as string) ?? "Unknown",
+            );
+          } else {
+            ws.send(JSON.stringify({
+              id: `reject-${Date.now()}`,
+              type: "download:rejected",
+              timestamp: Date.now(),
+              payload: { requestId: raw.id ?? "", reason: "No device available" },
+            }));
+          }
         } else {
-          // Agent offline — respond with queued message (Phase 6 handles actual queueing)
+          // Non-download commands to offline agent — reject
           ws.send(
             JSON.stringify({
               id: `reject-${Date.now()}`,
