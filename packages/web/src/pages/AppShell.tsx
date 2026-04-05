@@ -1,9 +1,49 @@
+import { useEffect } from "react";
 import { Link, Outlet, useNavigate } from "react-router";
 import { useAuthStore } from "../lib/store";
+import { wsClient } from "../lib/ws-client";
+
+const STATUS_CONFIG = {
+  connected: { color: "bg-emerald-400", label: "Connected" },
+  connecting: { color: "bg-amber-400", label: "Connecting..." },
+  disconnected: { color: "bg-zinc-600", label: "Disconnected" },
+} as const;
 
 export function AppShell() {
   const navigate = useNavigate();
-  const { profile, clearProfileSession } = useAuthStore();
+  const {
+    profile,
+    profileToken,
+    clearProfileSession,
+    connectionStatus,
+    setConnectionStatus,
+    updateDeviceStatus,
+  } = useAuthStore();
+
+  // Connect WebSocket when profile is selected
+  useEffect(() => {
+    if (!profileToken) return;
+
+    const unsubStatus = wsClient.onStatusChange(setConnectionStatus);
+    const unsubMessage = wsClient.onMessage((msg) => {
+      if (msg.type === "device:status") {
+        const payload = msg.payload as {
+          deviceId: string;
+          isOnline: boolean;
+          lastSeenAt: number;
+        };
+        updateDeviceStatus(payload.deviceId, payload.isOnline, payload.lastSeenAt);
+      }
+    });
+
+    wsClient.connect(profileToken);
+
+    return () => {
+      wsClient.disconnect();
+      unsubStatus();
+      unsubMessage();
+    };
+  }, [profileToken, setConnectionStatus, updateDeviceStatus]);
 
   if (!profile) {
     navigate("/profiles");
@@ -11,9 +51,12 @@ export function AppShell() {
   }
 
   function handleSwitchProfile() {
+    wsClient.disconnect();
     clearProfileSession();
     navigate("/profiles");
   }
+
+  const status = STATUS_CONFIG[connectionStatus];
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-white">
@@ -44,11 +87,11 @@ export function AppShell() {
           <NavLink to="/devices" label="Devices" />
         </nav>
 
-        {/* Connection status placeholder */}
+        {/* Connection status */}
         <div className="border-t border-zinc-800 p-4">
           <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <div className="h-2 w-2 rounded-full bg-zinc-600" />
-            <span>Connecting...</span>
+            <div className={`h-2 w-2 rounded-full ${status.color}`} />
+            <span>{status.label}</span>
           </div>
         </div>
       </aside>

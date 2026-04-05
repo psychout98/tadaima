@@ -8,6 +8,8 @@ import { profileRoutes } from "./routes/profiles.js";
 import { settings } from "./routes/settings.js";
 import { deviceRoutes } from "./routes/devices.js";
 import { agentConfig } from "./routes/agent-config.js";
+import { attachWebSocket } from "./ws/handler.js";
+import { startStaleReaper } from "./ws/pool.js";
 
 const app = new Hono();
 
@@ -36,8 +38,12 @@ app.onError((err, c) => {
 
 const port = parseInt(process.env.PORT ?? "3000", 10);
 
-serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port }, (info) => {
   console.log(`Relay listening on http://localhost:${info.port}`);
 });
+
+// Attach WebSocket handling to the HTTP server
+attachWebSocket(server);
+startStaleReaper();
 
 export { app };

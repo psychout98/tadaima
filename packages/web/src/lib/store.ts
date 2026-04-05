@@ -1,5 +1,7 @@
 import { create } from "zustand";
 
+type ConnectionStatus = "connecting" | "connected" | "disconnected";
+
 interface AuthState {
   // Admin auth
   adminToken: string | null;
@@ -15,6 +17,18 @@ interface AuthState {
     profile: { id: string; name: string; avatar: string | null },
   ) => void;
   clearProfileSession: () => void;
+
+  // WebSocket connection status
+  connectionStatus: ConnectionStatus;
+  setConnectionStatus: (status: ConnectionStatus) => void;
+
+  // Device status from WebSocket
+  deviceStatuses: Map<string, { isOnline: boolean; lastSeenAt: number }>;
+  updateDeviceStatus: (
+    deviceId: string,
+    isOnline: boolean,
+    lastSeenAt: number,
+  ) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -28,4 +42,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   profile: null,
   setProfileSession: (token, profile) => set({ profileToken: token, profile }),
   clearProfileSession: () => set({ profileToken: null, profile: null }),
+
+  connectionStatus: "disconnected",
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
+
+  deviceStatuses: new Map(),
+  updateDeviceStatus: (deviceId, isOnline, lastSeenAt) =>
+    set((state) => {
+      const newMap = new Map(state.deviceStatuses);
+      newMap.set(deviceId, { isOnline, lastSeenAt });
+      return { deviceStatuses: newMap };
+    }),
 }));
