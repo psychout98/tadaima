@@ -1,0 +1,121 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+  docker-relay:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/relay:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/relay:latest
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  docker-agent:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: packages/agent/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/agent:${{ github.ref_name }}
+            ghcr.io/${{ github.repository }}/agent:latest
+          platforms: linux/amd64,linux/arm64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    needs: [ci, docker-relay, docker-agent]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            echo "body=Initial release" >> $GITHUB_OUTPUT
+          else
+            CHANGES=$(git log --pretty=format:"- %s" "$PREV_TAG"..HEAD | head -50)
+            echo "body<<EOF" >> $GITHUB_OUTPUT
+            echo "$CHANGES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          body: |
+            ## Docker Images
+
+            ```bash
+            # Relay (includes web app)
+            docker pull ghcr.io/${{ github.repository }}/relay:${{ github.ref_name }}
+
+            # Agent
+            docker pull ghcr.io/${{ github.repository }}/agent:${{ github.ref_name }}
+            ```
+
+            ## Changes
+
+            ${{ steps.changelog.outputs.body }}
+          generate_release_notes: true
