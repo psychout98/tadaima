@@ -1,0 +1,26 @@
+export function SearchPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Search</h1>
+      <p className="mt-2 text-zinc-400">Coming in Phase 5</p>
+    </div>
+  );
+}
+
+export function DownloadsPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Downloads</h1>
+      <p className="mt-2 text-zinc-400">Coming in Phase 7</p>
+    </div>
+  );
+}
+
+export function DevicesPage() {
+  return (
+    <div>
+      <h1 className="text-2xl font-bold">Devices</h1>
+      <p className="mt-2 text-zinc-400">Coming in Phase 3</p>
+    </div>
+  );
+}

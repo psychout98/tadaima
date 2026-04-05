@@ -14,11 +14,18 @@
   "dependencies": {
     "@hono/node-server": "^1.14.0",
     "@tadaima/shared": "workspace:*",
-    "hono": "^4.7.0"
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.4.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.7.0",
+    "jose": "^6.2.2",
+    "postgres": "^3.4.8"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^25.5.2",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.1.2"
   }
 }
