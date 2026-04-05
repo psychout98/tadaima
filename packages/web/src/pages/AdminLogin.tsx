@@ -35,9 +35,10 @@ export function AdminLogin() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 p-6">
+      <form onSubmit={handleSubmit} data-testid="admin-login-form" className="w-full max-w-sm space-y-4 p-6">
         <h1 className="text-2xl font-bold">Admin Login</h1>
         <input
+          data-testid="username-input"
           type="text"
           placeholder="Username"
           value={username}
@@ -45,6 +46,7 @@ export function AdminLogin() {
           className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
         />
         <input
+          data-testid="password-input"
           type="password"
           placeholder="Password"
           value={password}

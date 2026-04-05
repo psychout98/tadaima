@@ -154,6 +154,7 @@ export function DownloadsPage() {
           <button
             key={t.key}
             onClick={() => setTab(t.key)}
+            data-testid={`tab-${t.key}`}
             className={`rounded-md px-4 py-2 text-sm font-medium transition ${
               tab === t.key
                 ? "bg-zinc-700 text-white"
@@ -171,7 +172,7 @@ export function DownloadsPage() {
       </div>
 
       {isEmpty && (
-        <div className="rounded-lg bg-zinc-900 p-8 text-center">
+        <div data-testid="downloads-empty" className="rounded-lg bg-zinc-900 p-8 text-center">
           <p className="text-zinc-400">No downloads yet.</p>
           <p className="mt-1 text-sm text-zinc-500">
             Search for something to get started.
@@ -181,7 +182,7 @@ export function DownloadsPage() {
 
       {/* Active downloads */}
       {showActive && activeList.length > 0 && (
-        <section className="mb-6">
+        <section data-testid="active-downloads" className="mb-6">
           <h2 className="mb-3 text-sm font-medium text-zinc-400">Active</h2>
           <div className="space-y-3">
             {activeList.map((dl) => (
@@ -193,7 +194,7 @@ export function DownloadsPage() {
 
       {/* Queued downloads */}
       {showQueued && queued.length > 0 && (
-        <section className="mb-6">
+        <section data-testid="queued-downloads" className="mb-6">
           <h2 className="mb-3 text-sm font-medium text-zinc-400">Queued</h2>
           <div className="space-y-2">
             {queued.map((q) => {
@@ -231,7 +232,7 @@ export function DownloadsPage() {
 
       {/* History */}
       {showHistory && filteredHistory.length > 0 && (
-        <section>
+        <section data-testid="download-history">
           <h2 className="mb-3 text-sm font-medium text-zinc-400">History</h2>
           <div className="space-y-2">
             {filteredHistory.map((h) => (
@@ -282,7 +283,7 @@ function ActiveCard({
   onCancel: (jobId: string) => void;
 }) {
   return (
-    <div className="rounded-lg bg-zinc-900 p-4">
+    <div data-testid="active-download-card" className="rounded-lg bg-zinc-900 p-4">
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <p className="text-sm font-medium">{download.title}</p>
@@ -291,6 +292,7 @@ function ActiveCard({
           </span>
         </div>
         <button
+          data-testid="cancel-btn"
           onClick={() => onCancel(download.jobId)}
           className="text-xs text-zinc-500 hover:text-red-400"
         >
@@ -301,6 +303,7 @@ function ActiveCard({
       {/* Progress bar */}
       <div className="mb-2 h-2 overflow-hidden rounded-full bg-zinc-800">
         <div
+          data-testid="progress-bar"
           className="h-full rounded-full bg-blue-500 transition-all duration-500"
           style={{ width: `${Math.min(download.progress, 100)}%` }}
         />

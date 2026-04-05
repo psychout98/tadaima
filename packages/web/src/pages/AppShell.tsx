@@ -117,7 +117,7 @@ export function AppShell() {
       <Toasts />
 
       {/* Sidebar */}
-      <aside className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950">
+      <aside data-testid="sidebar" className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950">
         {/* Profile header */}
         <button
           onClick={handleSwitchProfile}
@@ -131,34 +131,37 @@ export function AppShell() {
             {profile.name[0]}
           </div>
           <div className="text-left">
-            <p className="text-sm font-medium">{profile.name}</p>
+            <p data-testid="profile-name" className="text-sm font-medium">{profile.name}</p>
             <p className="text-xs text-zinc-500">Switch profile</p>
           </div>
         </button>
 
         {/* Nav links */}
         <nav className="flex-1 p-3">
-          <NavLink to="/" label="Search" active={location.pathname === "/"} />
+          <NavLink to="/" label="Search" active={location.pathname === "/"} testId="nav-search" />
           <NavLink
             to="/downloads"
             label="Downloads"
             active={location.pathname === "/downloads"}
+            testId="nav-downloads"
           />
           <NavLink
             to="/devices"
             label="Devices"
             active={location.pathname === "/devices"}
+            testId="nav-devices"
           />
           <NavLink
             to="/settings"
             label="Settings"
             active={location.pathname === "/settings"}
+            testId="nav-settings"
           />
         </nav>
 
         {/* Connection status */}
         <div className="border-t border-zinc-800 p-4">
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
+          <div data-testid="connection-status" className="flex items-center gap-2 text-xs text-zinc-500">
             <div className={`h-2 w-2 rounded-full ${status.color}`} />
             <span>{status.label}</span>
           </div>
@@ -177,14 +180,17 @@ function NavLink({
   to,
   label,
   active,
+  testId,
 }: {
   to: string;
   label: string;
   active: boolean;
+  testId?: string;
 }) {
   return (
     <Link
       to={to}
+      data-testid={testId}
       className={`block rounded-lg px-3 py-2 text-sm ${
         active
           ? "bg-zinc-800 font-medium text-white"

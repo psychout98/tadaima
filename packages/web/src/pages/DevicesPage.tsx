@@ -117,6 +117,7 @@ export function DevicesPage() {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Devices</h1>
         <button
+          data-testid="pair-device-btn"
           onClick={handlePairRequest}
           className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium"
         >
@@ -128,7 +129,7 @@ export function DevicesPage() {
       {pairingCode && (
         <div className="mb-6 rounded-lg bg-zinc-900 p-6 text-center">
           <p className="mb-2 text-sm text-zinc-400">Enter this code in your agent</p>
-          <p className="mb-2 font-mono text-4xl font-bold tracking-[0.3em]">
+          <p data-testid="pairing-code" className="mb-2 font-mono text-4xl font-bold tracking-[0.3em]">
             {pairingCode}
           </p>
           <p className="text-sm text-zinc-500">
@@ -149,9 +150,10 @@ export function DevicesPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div data-testid="device-list" className="space-y-3">
           {devices.map((device) => (
             <div
+              data-testid="device-card"
               key={device.id}
               className="flex items-center justify-between rounded-lg bg-zinc-900 p-4"
             >

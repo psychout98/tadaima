@@ -154,7 +154,7 @@ export function StreamPicker({
   }
 
   return (
-    <div className="mb-6">
+    <div data-testid="stream-picker" className="mb-6">
       {/* Header */}
       <div className="mb-4 flex gap-4">
         {result.posterPath && (
@@ -249,7 +249,7 @@ export function StreamPicker({
       )}
 
       {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div data-testid="filter-resolution" className="mb-4 flex flex-wrap items-center gap-2">
         {RESOLUTIONS.map((r) => (
           <button
             key={r}
@@ -265,6 +265,7 @@ export function StreamPicker({
         ))}
         <div className="mx-1 h-4 w-px bg-zinc-700" />
         <button
+          data-testid="filter-hdr"
           onClick={() => setHdrFilter(!hdrFilter)}
           className={`rounded-full px-3 py-1 text-xs font-medium ${
             hdrFilter
@@ -305,6 +306,7 @@ export function StreamPicker({
       <div className="mb-4 flex items-center gap-3">
         <label className="text-xs text-zinc-400">Download to:</label>
         <select
+          data-testid="device-selector"
           value={selectedDevice}
           onChange={(e) => setSelectedDevice(e.target.value)}
           className="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white outline-none"
@@ -338,7 +340,7 @@ export function StreamPicker({
               </thead>
               <tbody className="divide-y divide-zinc-800">
                 {paged.map((s) => (
-                  <tr key={s.infoHash} className="hover:bg-zinc-900/50">
+                  <tr key={s.infoHash} data-testid="stream-row" className="hover:bg-zinc-900/50">
                     <td className="max-w-xs truncate px-4 py-3 text-xs">
                       {s.title}
                     </td>
@@ -358,6 +360,7 @@ export function StreamPicker({
                     </td>
                     <td className="px-4 py-3 text-right">
                       <button
+                        data-testid="download-btn"
                         onClick={() => {
                           const msgId = `dl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
                           wsClient.send({

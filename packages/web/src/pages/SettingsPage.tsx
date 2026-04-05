@@ -63,6 +63,7 @@ export function SettingsPage() {
               <p className="mb-2 text-sm text-zinc-400">Change PIN</p>
               <div className="flex items-center gap-2">
                 <input
+                  data-testid="pin-input"
                   type="text"
                   inputMode="numeric"
                   maxLength={6}
@@ -74,6 +75,7 @@ export function SettingsPage() {
                   className="flex-1 rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <button
+                  data-testid="set-pin-btn"
                   onClick={handleChangePin}
                   disabled={pinLoading}
                   className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
@@ -82,7 +84,7 @@ export function SettingsPage() {
                 </button>
               </div>
               {pinMsg && (
-                <p className="mt-2 text-xs text-zinc-400">{pinMsg}</p>
+                <p data-testid="pin-msg" className="mt-2 text-xs text-zinc-400">{pinMsg}</p>
               )}
             </div>
           )}
@@ -114,6 +116,7 @@ export function SettingsPage() {
       {/* Actions */}
       <div className="space-y-3">
         <button
+          data-testid="switch-profile-btn"
           onClick={handleSwitchProfile}
           className="w-full rounded-lg bg-zinc-800 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-700"
         >
@@ -121,6 +124,7 @@ export function SettingsPage() {
         </button>
         {adminToken && (
           <button
+            data-testid="admin-panel-btn"
             onClick={() => navigate("/admin")}
             className="w-full rounded-lg bg-zinc-800 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-700"
           >

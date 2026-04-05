@@ -108,6 +108,7 @@ export function AdminPanel() {
               Profiles
             </button>
             <button
+              data-testid="logout-btn"
               onClick={handleLogout}
               className="text-sm text-zinc-400 hover:text-white"
             >
@@ -121,6 +122,7 @@ export function AdminPanel() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold">Profiles</h2>
             <button
+              data-testid="add-profile-btn"
               onClick={() => setShowAdd(!showAdd)}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium"
             >
@@ -129,8 +131,9 @@ export function AdminPanel() {
           </div>
 
           {showAdd && (
-            <div className="mb-4 space-y-3 rounded-lg bg-zinc-900 p-4">
+            <div data-testid="add-profile-form" className="mb-4 space-y-3 rounded-lg bg-zinc-900 p-4">
               <input
+                data-testid="new-profile-name"
                 type="text"
                 placeholder="Name"
                 value={newName}
@@ -149,6 +152,7 @@ export function AdminPanel() {
                 ))}
               </div>
               <input
+                data-testid="new-profile-pin"
                 type="text"
                 placeholder="PIN (optional, 4-6 digits)"
                 value={newPin}
@@ -156,6 +160,7 @@ export function AdminPanel() {
                 className="w-full rounded-lg bg-zinc-800 px-4 py-2 text-white outline-none focus:ring-2 focus:ring-blue-500"
               />
               <button
+                data-testid="create-profile-btn"
                 onClick={handleAddProfile}
                 disabled={!newName}
                 className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium disabled:opacity-50"
@@ -165,9 +170,10 @@ export function AdminPanel() {
             </div>
           )}
 
-          <div className="space-y-2">
+          <div data-testid="profile-list" className="space-y-2">
             {profiles.map((p) => (
               <div
+                data-testid="profile-row"
                 key={p.id}
                 className="flex items-center justify-between rounded-lg bg-zinc-900 p-4"
               >
@@ -209,6 +215,7 @@ export function AdminPanel() {
                 Current: {settings.rdApiKey ?? "Not set"}
               </p>
               <input
+                data-testid="rd-api-key-input"
                 type="text"
                 placeholder="Enter new key to update"
                 value={editRd}
@@ -224,6 +231,7 @@ export function AdminPanel() {
                 Current: {settings.tmdbApiKey ?? "Not set"}
               </p>
               <input
+                data-testid="tmdb-api-key-input"
                 type="text"
                 placeholder="Enter new key to update"
                 value={editTmdb}
@@ -232,9 +240,10 @@ export function AdminPanel() {
               />
             </div>
             {settingsMsg && (
-              <p className="text-emerald-400">{settingsMsg}</p>
+              <p data-testid="settings-msg" className="text-emerald-400">{settingsMsg}</p>
             )}
             <button
+              data-testid="save-settings-btn"
               onClick={handleSaveSettings}
               disabled={!editRd && !editTmdb}
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium disabled:opacity-50"

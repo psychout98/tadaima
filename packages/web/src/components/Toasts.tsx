@@ -23,11 +23,13 @@ export function Toasts() {
     <div className="fixed right-4 top-4 z-50 flex flex-col gap-2">
       {toasts.map((toast) => (
         <div
+          data-testid="toast"
           key={toast.id}
           className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm text-white shadow-lg ${COLORS[toast.type]}`}
         >
           <span className="flex-1">{toast.message}</span>
           <button
+            data-testid="toast-close"
             onClick={() => removeToast(toast.id)}
             className="text-white/60 hover:text-white"
           >

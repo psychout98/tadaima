@@ -94,6 +94,7 @@ export function SearchPage() {
       {/* Search bar */}
       <form onSubmit={handleSearch} className="mb-6 flex gap-3">
         <input
+          data-testid="search-bar"
           type="text"
           placeholder="Search movies and TV shows..."
           value={query}
@@ -101,6 +102,7 @@ export function SearchPage() {
           className="flex-1 rounded-lg bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
+          data-testid="search-btn"
           type="submit"
           disabled={!query.trim() || searching}
           className="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white disabled:opacity-50"
@@ -111,7 +113,7 @@ export function SearchPage() {
 
       {/* Recently viewed */}
       {recentlyViewed.length > 0 && !selected && (
-        <div className="mb-6">
+        <div data-testid="recently-viewed" className="mb-6">
           <h3 className="mb-2 text-sm font-medium text-zinc-400">
             Recently Viewed
           </h3>
@@ -149,9 +151,10 @@ export function SearchPage() {
 
       {/* Results grid */}
       {!selected && results.length > 0 && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div data-testid="results-grid" className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {results.map((r) => (
             <button
+              data-testid="result-card"
               key={`${r.tmdbId}-${r.mediaType}`}
               onClick={() => handleSelect(r)}
               className="group text-left"
@@ -201,7 +204,7 @@ export function SearchPage() {
 
       {/* Empty state */}
       {!selected && results.length === 0 && !searching && query && (
-        <p className="text-center text-zinc-500">No results found.</p>
+        <p data-testid="no-results" className="text-center text-zinc-500">No results found.</p>
       )}
     </div>
   );

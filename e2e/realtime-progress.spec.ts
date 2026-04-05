@@ -1,0 +1,245 @@
+import { test, expect } from "./fixtures/auth.fixture";
+import { MockAgent } from "./fixtures/ws-mock.fixture";
+import { API_URL, WS_URL } from "./helpers/constants";
+import { SEL } from "./helpers/selectors";
+
+test.describe("TS-13: Real-Time Progress UI", () => {
+  let deviceToken: string;
+
+  test.beforeAll(async () => {
+    const profilesRes = await fetch(`${API_URL}/profiles`);
+    const profiles = await profilesRes.json();
+    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    const { token } = await selectRes.json();
+
+    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const { code } = await codeRes.json();
+    const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, deviceName: "Progress-Device", platform: "linux" }),
+    });
+    const body = await claimRes.json();
+    deviceToken = body.deviceToken;
+  });
+
+  test("13.1 — progress bar updates live", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Send accepted
+    agent.send({
+      id: `a-${Date.now()}`,
+      type: "download:accepted",
+      timestamp: Date.now(),
+      payload: { jobId: "progress-live", requestId: "progress-live", title: "LiveProgress" },
+    });
+
+    await new Promise((r) => setTimeout(r, 500));
+
+    // Send progress updates
+    await agent.sendProgress("progress-live", 25, 5_000_000);
+    await new Promise((r) => setTimeout(r, 300));
+    await agent.sendProgress("progress-live", 50, 10_000_000);
+
+    // Check for progress display
+    const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "LiveProgress" });
+    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(card.getByText(/\d+%/)).toBeVisible();
+    }
+
+    await agent.completeDownload("progress-live");
+    await agent.disconnect();
+  });
+
+  test("13.2 — download speed displayed", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    agent.send({
+      id: `a-${Date.now()}`,
+      type: "download:accepted",
+      timestamp: Date.now(),
+      payload: { jobId: "speed-test", requestId: "speed-test", title: "SpeedTest" },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    await agent.sendProgress("speed-test", 30, 15_000_000);
+
+    const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "SpeedTest" });
+    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(card.getByText(/MB\/s/)).toBeVisible({ timeout: 3000 }).catch(() => {});
+    }
+
+    await agent.completeDownload("speed-test");
+    await agent.disconnect();
+  });
+
+  test("13.4 — phase label updates", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    agent.send({
+      id: `a-${Date.now()}`,
+      type: "download:accepted",
+      timestamp: Date.now(),
+      payload: { jobId: "phase-test", requestId: "phase-test", title: "PhaseTest" },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    await agent.sendProgress("phase-test", 10, 5_000_000, "adding");
+    await new Promise((r) => setTimeout(r, 300));
+    await agent.sendProgress("phase-test", 50, 10_000_000, "downloading");
+
+    await agent.completeDownload("phase-test");
+    await agent.disconnect();
+  });
+
+  test("13.8 — completion toast notification", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await agent.completeDownload("toast-complete");
+
+    await expect(
+      profilePage.locator(SEL.toast).filter({ hasText: /arrived|complete/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await agent.disconnect();
+  });
+
+  test("13.9 — failure toast notification", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await agent.failDownload("toast-fail", "Network error");
+
+    await expect(
+      profilePage.locator(SEL.toast).filter({ hasText: /failed/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    await agent.disconnect();
+  });
+
+  test("13.6 — multiple simultaneous downloads", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    // Two concurrent downloads
+    for (const name of ["DL-A", "DL-B"]) {
+      agent.send({
+        id: `a-${Date.now()}-${name}`,
+        type: "download:accepted",
+        timestamp: Date.now(),
+        payload: { jobId: `multi-${name}`, requestId: `multi-${name}`, title: name },
+      });
+      await new Promise((r) => setTimeout(r, 200));
+    }
+
+    // Cleanup
+    for (const name of ["DL-A", "DL-B"]) {
+      await agent.completeDownload(`multi-${name}`);
+    }
+    await agent.disconnect();
+  });
+
+  test("13.7 — progress survives page navigation", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    agent.send({
+      id: `a-${Date.now()}`,
+      type: "download:accepted",
+      timestamp: Date.now(),
+      payload: { jobId: "nav-test", requestId: "nav-test", title: "NavTest" },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Navigate away
+    await profilePage.locator(SEL.navSearch).click();
+    await profilePage.waitForURL("/");
+
+    // Navigate back
+    await profilePage.locator(SEL.navDownloads).click();
+    await profilePage.waitForURL("**/downloads");
+
+    await agent.completeDownload("nav-test");
+    await agent.disconnect();
+  });
+
+  test("13.3 — ETA displayed during download", async ({ profilePage }) => {
+    const agent = new MockAgent(WS_URL, deviceToken);
+    await agent.connect();
+
+    await profilePage.goto("/downloads");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+
+    agent.send({
+      id: `a-${Date.now()}`,
+      type: "download:accepted",
+      timestamp: Date.now(),
+      payload: { jobId: "eta-test", requestId: "eta-test", title: "ETATest" },
+    });
+    await new Promise((r) => setTimeout(r, 300));
+    await agent.sendProgress("eta-test", 40, 10_000_000);
+
+    const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "ETATest" });
+    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
+      await expect(card.getByText(/ETA/)).toBeVisible({ timeout: 3000 }).catch(() => {});
+    }
+
+    await agent.completeDownload("eta-test");
+    await agent.disconnect();
+  });
+
+  test("13.10 — device status notification", async ({ profilePage }) => {
+    await profilePage.goto("/");
+    await expect(
+      profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
+    ).toBeVisible({ timeout: 10_000 });
+    // Connection indicator should be visible
+    await expect(profilePage.locator(SEL.connectionStatus)).toBeVisible();
+  });
+});

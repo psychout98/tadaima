@@ -51,12 +51,13 @@ export function SetupWizard() {
 
   const steps = [
     // Step 0: Admin account
-    <div key="admin" className="space-y-4">
+    <div key="admin" data-testid="setup-step-admin" className="space-y-4">
       <h2 className="text-2xl font-bold">Create Admin Account</h2>
       <p className="text-zinc-400">
         This account manages your Tadaima instance.
       </p>
       <input
+        data-testid="username-input"
         type="text"
         placeholder="Username"
         value={username}
@@ -64,6 +65,7 @@ export function SetupWizard() {
         className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-blue-500"
       />
       <input
+        data-testid="password-input"
         type="password"
         placeholder="Password (min 8 characters)"
         value={password}
@@ -80,7 +82,7 @@ export function SetupWizard() {
     </div>,
 
     // Step 1: TMDB key
-    <div key="tmdb" className="space-y-4">
+    <div key="tmdb" data-testid="setup-step-tmdb" className="space-y-4">
       <h2 className="text-2xl font-bold">TMDB API Key</h2>
       <p className="text-zinc-400">
         Used for movie and TV show metadata.{" "}
@@ -127,7 +129,7 @@ export function SetupWizard() {
     </div>,
 
     // Step 2: RD key
-    <div key="rd" className="space-y-4">
+    <div key="rd" data-testid="setup-step-rd" className="space-y-4">
       <h2 className="text-2xl font-bold">Real-Debrid API Key</h2>
       <p className="text-zinc-400">
         Used for downloading content.{" "}
@@ -174,7 +176,7 @@ export function SetupWizard() {
     </div>,
 
     // Step 3: First profile
-    <div key="profile" className="space-y-4">
+    <div key="profile" data-testid="setup-step-profile" className="space-y-4">
       <h2 className="text-2xl font-bold">Create Your Profile</h2>
       <p className="text-zinc-400">This is your identity in Tadaima.</p>
       <input
@@ -220,7 +222,7 @@ export function SetupWizard() {
   ];
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
+    <div data-testid="setup-wizard" className="flex min-h-screen items-center justify-center bg-zinc-950 text-white">
       <div className="w-full max-w-md p-6">
         <h1 className="mb-2 text-center text-3xl font-bold">Tadaima</h1>
         <p className="mb-8 text-center text-zinc-400">

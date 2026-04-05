@@ -82,6 +82,7 @@ export function ProfilePicker() {
           <h2 className="text-xl font-bold">{selectedProfile.name}</h2>
           <p className="text-zinc-400">Enter PIN</p>
           <input
+            data-testid="pin-input"
             type="password"
             inputMode="numeric"
             maxLength={6}
@@ -91,7 +92,7 @@ export function ProfilePicker() {
             className="w-full rounded-lg bg-zinc-800 px-4 py-3 text-center text-2xl tracking-widest text-white outline-none focus:ring-2 focus:ring-blue-500"
             autoFocus
           />
-          {pinError && <p className="text-red-400">{pinError}</p>}
+          {pinError && <p data-testid="pin-error" className="text-red-400">{pinError}</p>}
           <div className="flex gap-3">
             <button
               onClick={() => setSelectedProfile(null)}
@@ -117,9 +118,10 @@ export function ProfilePicker() {
       <h1 className="mb-2 text-3xl font-bold">Who's watching?</h1>
       <p className="mb-8 text-zinc-400">Select your profile</p>
 
-      <div className="flex flex-wrap justify-center gap-6">
+      <div data-testid="profile-grid" className="flex flex-wrap justify-center gap-6">
         {profiles.map((profile) => (
           <button
+            data-testid="profile-card"
             key={profile.id}
             onClick={() => handleSelect(profile)}
             className="group flex flex-col items-center gap-2"
