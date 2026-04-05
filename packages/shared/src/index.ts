@@ -1,3 +1,20 @@
-// @tadaima/shared — types, schemas, and utilities
-// Barrel export (populated in Phase 1)
-export {};
+// Messages — Zod schemas and inferred types
+export * from "./messages.js";
+
+// API types — request/response schemas and types
+export * from "./api-types.js";
+
+// Error types and codes
+export * from "./errors.js";
+
+// Database schema (Drizzle)
+export * from "./db/schema.js";
+
+// Utilities
+export {
+  createMessageId,
+  createTimestamp,
+  sanitizeFilename,
+  buildMoviePath,
+  buildEpisodePath,
+} from "./utils.js";
