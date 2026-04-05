@@ -200,4 +200,87 @@ export const api = {
         token,
       ),
   },
+
+  search: (q: string) =>
+    request<
+      Array<{
+        tmdbId: number;
+        imdbId: string | null;
+        title: string;
+        year: number | null;
+        mediaType: "movie" | "tv";
+        posterPath: string | null;
+        overview: string | null;
+      }>
+    >(`/api/search?q=${encodeURIComponent(q)}`),
+
+  media: (type: string, tmdbId: number) =>
+    request<{
+      tmdbId: number;
+      imdbId: string | null;
+      title: string;
+      year: number | null;
+      mediaType: string;
+      posterPath: string | null;
+      overview: string | null;
+      seasons?: Array<{
+        seasonNumber: number;
+        name: string;
+        episodeCount: number;
+      }>;
+    }>(`/api/media/${type}/${tmdbId}`),
+
+  streams: (type: string, imdbId: string, season?: number, episode?: number) => {
+    let url = `/api/streams/${type}/${imdbId}`;
+    if (season !== undefined && episode !== undefined) {
+      url += `?season=${season}&episode=${episode}`;
+    }
+    return request<
+      Array<{
+        title: string;
+        infoHash: string;
+        magnet: string;
+        size: number | null;
+        seeds: number | null;
+        resolution: string | null;
+        codec: string | null;
+        audio: string | null;
+        hdr: boolean | null;
+        source: string | null;
+      }>
+    >(url);
+  },
+
+  posterUrl: (path: string) => `${BASE_URL}/api/poster/${path}`,
+
+  recentlyViewed: {
+    list: (token: string) =>
+      request<
+        Array<{
+          id: string;
+          tmdbId: number;
+          mediaType: string;
+          title: string;
+          year: number;
+          posterPath: string | null;
+          imdbId: string | null;
+          viewedAt: string;
+        }>
+      >("/api/recently-viewed", {}, token),
+    add: (
+      data: {
+        tmdbId: number;
+        mediaType: string;
+        title: string;
+        year: number | null;
+        posterPath: string | null;
+        imdbId: string | null;
+      },
+      token: string,
+    ) =>
+      request<{ success: boolean }>("/api/recently-viewed", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }, token),
+  },
 };

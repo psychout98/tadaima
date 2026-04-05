@@ -8,6 +8,8 @@ import { profileRoutes } from "./routes/profiles.js";
 import { settings } from "./routes/settings.js";
 import { deviceRoutes } from "./routes/devices.js";
 import { agentConfig } from "./routes/agent-config.js";
+import { proxy } from "./routes/proxy.js";
+import { recentlyViewedRoutes } from "./routes/recently-viewed.js";
 import { attachWebSocket } from "./ws/handler.js";
 import { startStaleReaper } from "./ws/pool.js";
 
@@ -25,6 +27,8 @@ app.route("/api/profiles", profileRoutes);
 app.route("/api/admin/settings", settings);
 app.route("/api/devices", deviceRoutes);
 app.route("/api/agent", agentConfig);
+app.route("/api", proxy);
+app.route("/api/recently-viewed", recentlyViewedRoutes);
 
 // Global error handler
 app.onError((err, c) => {

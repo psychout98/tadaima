@@ -7,7 +7,8 @@ import { ProfilePicker } from "./pages/ProfilePicker";
 import { AdminLogin } from "./pages/AdminLogin";
 import { AdminPanel } from "./pages/AdminPanel";
 import { AppShell } from "./pages/AppShell";
-import { SearchPage, DownloadsPage } from "./pages/Placeholder";
+import { DownloadsPage } from "./pages/Placeholder";
+import { SearchPage } from "./pages/SearchPage";
 import { DevicesPage } from "./pages/DevicesPage";
 
 const queryClient = new QueryClient();
