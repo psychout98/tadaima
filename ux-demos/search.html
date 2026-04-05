@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tadaima — Search</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f0f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    background: #1a1a1a;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 0;
+    flex-shrink: 0;
+  }
+  .sidebar-header {
+    padding: 0 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+  }
+  .sidebar-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #6366f120;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6366f1;
+  }
+  .sidebar-user { font-size: 0.9rem; font-weight: 500; }
+  .sidebar-role { font-size: 0.7rem; color: #888; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 1.25rem;
+    font-size: 0.9rem;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.12s;
+    text-decoration: none;
+  }
+  .nav-item:hover { color: #e0e0e0; background: #242424; }
+  .nav-item.active { color: #e0e0e0; background: #242424; border-right: 2px solid #6366f1; }
+  .nav-icon { width: 18px; height: 18px; opacity: 0.7; }
+  .nav-item.active .nav-icon { opacity: 1; }
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 0.75rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    color: #888;
+  }
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+  }
+  .status-dot.offline { background: #ef4444; }
+  .status-dot.connecting { background: #eab308; }
+
+  /* Main */
+  .main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2rem 2.5rem;
+  }
+
+  /* Search */
+  .search-bar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    max-width: 640px;
+  }
+  .search-input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: #6366f1; }
+  .search-input::placeholder { color: #666; }
+  .search-btn {
+    padding: 0.75rem 1.5rem;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .search-btn:hover { background: #818cf8; }
+
+  /* Recently Viewed */
+  .recently-viewed {
+    margin-bottom: 2rem;
+  }
+  .section-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+  }
+  .recent-strip {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+  }
+  .recent-item {
+    flex-shrink: 0;
+    width: 90px;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .recent-item:hover { transform: scale(1.06); }
+  .recent-poster {
+    width: 90px;
+    height: 135px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    color: #666;
+    overflow: hidden;
+    margin-bottom: 0.4rem;
+  }
+  .recent-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .recent-title {
+    font-size: 0.7rem;
+    color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .recent-year {
+    font-size: 0.65rem;
+    color: #666;
+  }
+
+  /* Results Grid */
+  .results-info {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 1rem;
+  }
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+  }
+  .result-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .result-card:hover { border-color: #6366f1; transform: translateY(-2px); }
+  .result-card.selected { border-color: #6366f1; }
+  .result-poster {
+    width: 100%;
+    aspect-ratio: 2/3;
+    background: #242424;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 0.8rem;
+    position: relative;
+  }
+  .result-poster img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .type-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .type-badge.movie { background: #6366f130; color: #a5b4fc; }
+  .type-badge.tv { background: #3b82f630; color: #93c5fd; }
+  .result-info {
+    padding: 0.75rem;
+  }
+  .result-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .result-year { font-size: 0.75rem; color: #888; margin-bottom: 0.4rem; }
+  .result-overview {
+    font-size: 0.72rem;
+    color: #888;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.4;
+  }
+
+  /* Stream Picker */
+  .stream-picker {
+    display: none;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    overflow: hidden;
+  }
+  .stream-picker.active { display: block; }
+  .stream-header {
+    display: flex;
+    gap: 1.25rem;
+    padding: 1.25rem;
+    border-bottom: 1px solid #333;
+  }
+  .stream-poster {
+    width: 80px;
+    height: 120px;
+    background: #242424;
+    border-radius: 8px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+    font-size: 0.7rem;
+  }
+  .stream-poster img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+  .stream-meta { flex: 1; }
+  .stream-meta h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.25rem; }
+  .stream-meta-badges { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+  .badge {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 600;
+  }
+  .badge-movie { background: #6366f130; color: #a5b4fc; }
+  .badge-year { background: #24242480; color: #ccc; }
+  .badge-imdb { background: #eab30830; color: #fde68a; }
+  .stream-overview { font-size: 0.8rem; color: #888; line-height: 1.5; }
+  .close-picker {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    align-self: flex-start;
+  }
+  .close-picker:hover { color: #e0e0e0; }
+
+  /* Filters */
+  .filter-bar {
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #333;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+  .filter-group {
+    display: flex;
+    gap: 0.3rem;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 0.7rem;
+    color: #666;
+    margin-right: 0.25rem;
+  }
+  .filter-chip {
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    border: 1px solid #333;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .filter-chip:hover { border-color: #6366f1; color: #ccc; }
+  .filter-chip.active { background: #6366f130; border-color: #6366f1; color: #a5b4fc; }
+  .filter-sep { width: 1px; height: 20px; background: #333; margin: 0 0.25rem; }
+  .filter-meta {
+    margin-left: auto;
+    font-size: 0.72rem;
+    color: #888;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+  .clear-filters {
+    font-size: 0.7rem;
+    color: #6366f1;
+    cursor: pointer;
+    background: none;
+    border: none;
+  }
+  .clear-filters:hover { text-decoration: underline; }
+
+  /* Stream Table */
+  .stream-table {
+    width: 100%;
+  }
+  .stream-row {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-bottom: 1px solid #2a2a2a;
+    gap: 1rem;
+    transition: background 0.1s;
+  }
+  .stream-row:hover { background: #242424; }
+  .stream-name {
+    flex: 1;
+    font-size: 0.78rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    color: #ccc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stream-badges {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+  .attr-badge {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.6rem;
+    font-weight: 600;
+  }
+  .attr-2160 { background: #f9731620; color: #fdba74; }
+  .attr-1080 { background: #3b82f620; color: #93c5fd; }
+  .attr-hdr { background: #eab30820; color: #fde68a; }
+  .attr-dv { background: #ec489920; color: #f9a8d4; }
+  .attr-atmos { background: #22c55e20; color: #86efac; }
+  .attr-51 { background: #22c55e20; color: #86efac; }
+  .attr-cached { background: #22c55e30; color: #4ade80; }
+  .stream-size {
+    font-size: 0.78rem;
+    color: #888;
+    width: 70px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .stream-seeders {
+    font-size: 0.72rem;
+    color: #666;
+    width: 50px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .download-btn {
+    padding: 5px 14px;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.12s;
+    flex-shrink: 0;
+  }
+  .download-btn:hover { background: #818cf8; }
+
+  /* Device Selector */
+  .device-bar {
+    padding: 0.75rem 1.25rem;
+    border-top: 1px solid #333;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.8rem;
+    color: #888;
+  }
+  .device-select {
+    padding: 5px 10px;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 6px;
+    color: #e0e0e0;
+    font-size: 0.78rem;
+    outline: none;
+  }
+  .device-select:focus { border-color: #6366f1; }
+
+  /* Toast */
+  .toast-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 200;
+  }
+  .toast {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: slideIn 0.25s ease-out;
+    min-width: 280px;
+  }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+  .toast.info { background: #1e3a5f; border: 1px solid #3b82f640; color: #93c5fd; }
+  .toast.success { background: #14532d; border: 1px solid #22c55e40; color: #86efac; }
+</style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-avatar">N</div>
+      <div>
+        <div class="sidebar-user">Noah</div>
+        <div class="sidebar-role">Switch profile</div>
+      </div>
+    </div>
+    <a class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search
+    </a>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Downloads
+    </a>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Devices
+    </a>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </a>
+    <div class="sidebar-footer">
+      <div class="status-dot"></div>
+      Connected
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <input class="search-input" type="text" placeholder="Search movies and TV shows..." value="" id="searchInput" oninput="updateView()">
+      <button class="search-btn" onclick="doSearch()">Search</button>
+    </div>
+
+    <!-- Recently Viewed -->
+    <div class="recently-viewed">
+      <div class="section-title">Recently Viewed</div>
+      <div class="recent-strip">
+        <div class="recent-item" onclick="openStreamPicker(0)">
+          <div class="recent-poster" style="background: linear-gradient(135deg, #1a1a2e, #16213e); color: #8b9dc3; font-size: 1.5rem; font-weight: 700;">DU</div>
+          <div class="recent-title">Dune: Part Two</div>
+          <div class="recent-year">2024</div>
+        </div>
+        <div class="recent-item" onclick="openStreamPicker(0)">
+          <div class="recent-poster" style="background: linear-gradient(135deg, #1a2e1a, #162116); color: #8bc38b; font-size: 1.5rem; font-weight: 700;">BB</div>
+          <div class="recent-title">Breaking Bad</div>
+          <div class="recent-year">2008</div>
+        </div>
+        <div class="recent-item" onclick="openStreamPicker(0)">
+          <div class="recent-poster" style="background: linear-gradient(135deg, #2e1a1a, #211616); color: #c38b8b; font-size: 1.5rem; font-weight: 700;">OP</div>
+          <div class="recent-title">Oppenheimer</div>
+          <div class="recent-year">2023</div>
+        </div>
+        <div class="recent-item" onclick="openStreamPicker(0)">
+          <div class="recent-poster" style="background: linear-gradient(135deg, #1a1a2e, #161621); color: #8b8bc3; font-size: 1.5rem; font-weight: 700;">TM</div>
+          <div class="recent-title">The Matrix</div>
+          <div class="recent-year">1999</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Search Results (hidden until search) -->
+    <div class="results-info" id="resultsInfo" style="display: none;">Showing 6 results for "Interstellar"</div>
+    <div class="results-grid" id="resultsGrid" style="display: none;">
+      <div class="result-card" onclick="openStreamPicker(0)">
+        <div class="result-poster" style="background: linear-gradient(180deg, #0a1628, #1a2a4a);">
+          <span style="font-size: 2.5rem; font-weight: 800; color: #4a6fa5;">I</span>
+          <div class="type-badge movie">Movie</div>
+        </div>
+        <div class="result-info">
+          <div class="result-title">Interstellar</div>
+          <div class="result-year">2014</div>
+          <div class="result-overview">A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.</div>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-poster" style="background: linear-gradient(180deg, #1a0a28, #2a1a3a);">
+          <span style="font-size: 2rem; font-weight: 800; color: #7a5aaa;">IW</span>
+          <div class="type-badge movie">Movie</div>
+        </div>
+        <div class="result-info">
+          <div class="result-title">Interstellar Wars</div>
+          <div class="result-year">2016</div>
+          <div class="result-overview">Aliens have been observing the earth for signs of intelligent life.</div>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-poster" style="background: linear-gradient(180deg, #0a2818, #1a3a2a);">
+          <span style="font-size: 1.8rem; font-weight: 800; color: #5aaa7a;">IC</span>
+          <div class="type-badge movie">Movie</div>
+        </div>
+        <div class="result-info">
+          <div class="result-title">Interstellar Civil War</div>
+          <div class="result-year">2017</div>
+          <div class="result-overview">Rebels flee the empire and find sanctuary on a world controlled by a regent.</div>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-poster" style="background: linear-gradient(180deg, #28180a, #3a2a1a);">
+          <span style="font-size: 2rem; font-weight: 800; color: #aa8a5a;">TI</span>
+          <div class="type-badge tv">TV</div>
+        </div>
+        <div class="result-info">
+          <div class="result-title">The Interstellar Flame</div>
+          <div class="result-year">2023</div>
+          <div class="result-overview">An interstellar journey spanning generations aboard a colony ship.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stream Picker -->
+    <div class="stream-picker" id="streamPicker">
+      <div class="stream-header">
+        <div class="stream-poster" style="background: linear-gradient(180deg, #0a1628, #1a2a4a);">
+          <span style="font-size: 1.8rem; font-weight: 800; color: #4a6fa5;">I</span>
+        </div>
+        <div class="stream-meta">
+          <h2>Interstellar</h2>
+          <div class="stream-meta-badges">
+            <span class="badge badge-movie">Movie</span>
+            <span class="badge badge-year">2014</span>
+            <span class="badge badge-imdb">IMDb 8.7</span>
+          </div>
+          <div class="stream-overview">A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival. When Earth becomes uninhabitable, a pilot must lead a team on a mission through space to find a new home.</div>
+        </div>
+        <button class="close-picker" onclick="closeStreamPicker()">✕</button>
+      </div>
+
+      <!-- Filters -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <span class="filter-label">Resolution</span>
+          <button class="filter-chip" onclick="toggleFilter(this)">480p</button>
+          <button class="filter-chip" onclick="toggleFilter(this)">720p</button>
+          <button class="filter-chip" onclick="toggleFilter(this)">1080p</button>
+          <button class="filter-chip active" onclick="toggleFilter(this)">2160p</button>
+        </div>
+        <div class="filter-sep"></div>
+        <div class="filter-group">
+          <span class="filter-label">HDR</span>
+          <button class="filter-chip" onclick="toggleFilter(this)">HDR</button>
+          <button class="filter-chip" onclick="toggleFilter(this)">DV</button>
+        </div>
+        <div class="filter-sep"></div>
+        <div class="filter-group">
+          <span class="filter-label">Audio</span>
+          <button class="filter-chip" onclick="toggleFilter(this)">5.1</button>
+          <button class="filter-chip" onclick="toggleFilter(this)">7.1</button>
+          <button class="filter-chip" onclick="toggleFilter(this)">Atmos</button>
+        </div>
+        <div class="filter-sep"></div>
+        <div class="filter-group">
+          <button class="filter-chip active" onclick="toggleFilter(this)" style="background: #22c55e20; border-color: #22c55e; color: #4ade80;">RD Cached</button>
+        </div>
+        <div class="filter-meta">
+          <span>Showing 4 of 12 streams</span>
+          <button class="clear-filters" onclick="clearFilters()">Clear all</button>
+        </div>
+      </div>
+
+      <!-- Stream List -->
+      <div class="stream-table">
+        <div class="stream-row">
+          <div class="stream-name">Interstellar.2014.2160p.UHD.BluRay.x265.HDR.DTS-HD.MA.5.1-SWTYBLZ</div>
+          <div class="stream-badges">
+            <span class="attr-badge attr-2160">2160p</span>
+            <span class="attr-badge attr-hdr">HDR</span>
+            <span class="attr-badge attr-51">5.1</span>
+            <span class="attr-badge attr-cached">RD Cached</span>
+          </div>
+          <div class="stream-size">45.2 GB</div>
+          <div class="stream-seeders">142</div>
+          <button class="download-btn" onclick="triggerDownload('Interstellar')">Download</button>
+        </div>
+        <div class="stream-row">
+          <div class="stream-name">Interstellar.2014.2160p.UHD.BluRay.REMUX.HDR.DV.TrueHD.Atmos.7.1-FGT</div>
+          <div class="stream-badges">
+            <span class="attr-badge attr-2160">2160p</span>
+            <span class="attr-badge attr-hdr">HDR</span>
+            <span class="attr-badge attr-dv">DV</span>
+            <span class="attr-badge attr-atmos">Atmos</span>
+            <span class="attr-badge attr-cached">RD Cached</span>
+          </div>
+          <div class="stream-size">78.4 GB</div>
+          <div class="stream-seeders">89</div>
+          <button class="download-btn" onclick="triggerDownload('Interstellar')">Download</button>
+        </div>
+        <div class="stream-row">
+          <div class="stream-name">Interstellar.2014.2160p.WEB-DL.DDP5.1.HDR.x265-NOGRP</div>
+          <div class="stream-badges">
+            <span class="attr-badge attr-2160">2160p</span>
+            <span class="attr-badge attr-hdr">HDR</span>
+            <span class="attr-badge attr-51">5.1</span>
+          </div>
+          <div class="stream-size">18.7 GB</div>
+          <div class="stream-seeders">234</div>
+          <button class="download-btn" onclick="triggerDownload('Interstellar')">Download</button>
+        </div>
+        <div class="stream-row">
+          <div class="stream-name">Interstellar.2014.2160p.BluRay.x265.10bit.HDR.DTS-HD.MA.5.1-TERMINAL</div>
+          <div class="stream-badges">
+            <span class="attr-badge attr-2160">2160p</span>
+            <span class="attr-badge attr-hdr">HDR</span>
+            <span class="attr-badge attr-51">5.1</span>
+            <span class="attr-badge attr-cached">RD Cached</span>
+          </div>
+          <div class="stream-size">32.1 GB</div>
+          <div class="stream-seeders">167</div>
+          <button class="download-btn" onclick="triggerDownload('Interstellar')">Download</button>
+        </div>
+      </div>
+
+      <!-- Device Selector -->
+      <div class="device-bar">
+        <span>Download to:</span>
+        <select class="device-select">
+          <option>⭐ noah-macbook (Online)</option>
+          <option>dad-nas (Online)</option>
+          <option>sarah-pc — Offline, will queue</option>
+        </select>
+      </div>
+    </div>
+  </main>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    function openStreamPicker(idx) {
+      document.getElementById('streamPicker').classList.add('active');
+      document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
+      document.querySelectorAll('.result-card')[idx]?.classList.add('selected');
+    }
+    function closeStreamPicker() {
+      document.getElementById('streamPicker').classList.remove('active');
+      document.querySelectorAll('.result-card').forEach(c => c.classList.remove('selected'));
+    }
+    function toggleFilter(el) {
+      el.classList.toggle('active');
+    }
+    function clearFilters() {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+    }
+    function triggerDownload(title) {
+      showToast('info', `Download started: ${title}`);
+      setTimeout(() => showToast('success', `ただいま — ${title} has arrived`), 3000);
+    }
+    function showToast(type, message) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.innerHTML = `<span>${type === 'success' ? '✓' : 'ℹ'}</span> ${message}`;
+      container.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 200); }, 4000);
+    }
+    function doSearch() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) return;
+      document.querySelector('.recently-viewed').style.display = 'none';
+      document.getElementById('resultsInfo').style.display = 'block';
+      document.getElementById('resultsGrid').style.display = 'grid';
+      document.getElementById('resultsInfo').textContent = `Showing 6 results for "${query}"`;
+    }
+    function updateView() {
+      const query = document.getElementById('searchInput').value.trim();
+      if (!query) {
+        // Back to landing state
+        document.querySelector('.recently-viewed').style.display = '';
+        document.getElementById('resultsInfo').style.display = 'none';
+        document.getElementById('resultsGrid').style.display = 'none';
+        closeStreamPicker();
+      }
+    }
+    // Handle enter key
+    document.getElementById('searchInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') doSearch();
+    });
+  </script>
+</body>
+</html>

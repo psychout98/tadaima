@@ -74,18 +74,69 @@ tadaima-agent start
 ```
 
 **Docker:**
-```yaml
-services:
-  tadaima:
-    image: ghcr.io/psychout98/tadaima/agent:latest
-    environment:
-      - RELAY_URL=https://your-instance.up.railway.app
-      - DEVICE_TOKEN=your-device-token
-    volumes:
-      - /path/to/movies:/media/movies
-      - /path/to/tv:/media/tv
-    restart: unless-stopped
-```
+
+The agent image is published to the GitHub Container Registry. Because `setup` is interactive, Docker agents are configured by writing the config file directly.
+
+1. **Generate a pairing code** in the web app (Profile → Devices → Pair New Device).
+
+2. **Claim the pairing code** from the machine that will run the agent:
+
+   ```bash
+   curl -X POST https://your-instance.up.railway.app/api/devices/pair/claim \
+     -H "Content-Type: application/json" \
+     -d '{"code":"ABC123","name":"my-nas","platform":"linux"}'
+   ```
+
+   The response contains `deviceId`, `deviceToken`, and `rdApiKey` — save these.
+
+3. **Create a config file** at `./agent-config/config.json`:
+
+   ```json
+   {
+     "relay": "https://your-instance.up.railway.app",
+     "deviceToken": "<deviceToken from step 2>",
+     "deviceId": "<deviceId from step 2>",
+     "deviceName": "my-nas",
+     "directories": {
+       "movies": "/mnt/media/Movies",
+       "tv": "/mnt/media/TV",
+       "staging": "/tmp/tadaima/staging"
+     },
+     "realDebrid": {
+       "apiKey": "<rdApiKey from step 2>"
+     },
+     "maxConcurrentDownloads": 2,
+     "rdPollInterval": 30
+   }
+   ```
+
+4. **Run the container:**
+
+   ```yaml
+   # docker-compose.agent.yml
+   services:
+     tadaima-agent:
+       image: ghcr.io/psychout98/tadaima/agent:latest
+       volumes:
+         - ./agent-config:/root/.config/tadaima   # config file
+         - /path/to/movies:/mnt/media/Movies      # must match directories.movies
+         - /path/to/tv:/mnt/media/TV              # must match directories.tv
+       restart: unless-stopped
+   ```
+
+   Or with `docker run`:
+
+   ```bash
+   docker run -d \
+     --name tadaima-agent \
+     -v ./agent-config:/root/.config/tadaima \
+     -v /path/to/movies:/mnt/media/Movies \
+     -v /path/to/tv:/mnt/media/TV \
+     --restart unless-stopped \
+     ghcr.io/psychout98/tadaima/agent:latest
+   ```
+
+   The volume paths on the left side are directories on your host machine. The right side paths must match what's in `config.json`.
 
 ## Agent CLI
 

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tadaima — Profiles (Mobile)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0f0f0f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1.5rem;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+  .logo { font-size: 1.6rem; font-weight: 700; margin-bottom: 0.3rem; letter-spacing: -0.02em; }
+  .logo span { color: #6366f1; }
+  .subtitle { color: #888; font-size: 0.85rem; margin-bottom: 2.5rem; }
+
+  .profiles {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem 2rem;
+    margin-bottom: 2.5rem;
+    width: 100%;
+    max-width: 280px;
+  }
+  .profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .profile:active .avatar { transform: scale(0.94); }
+  .avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    border: 3px solid transparent;
+    transition: transform 0.1s, border-color 0.15s;
+  }
+  .avatar.indigo { background: #6366f120; }
+  .avatar.green { background: #22c55e20; }
+  .avatar.pink { background: #ec489920; }
+  .avatar.blue { background: #3b82f620; }
+  .profile-name { font-size: 0.85rem; color: #ccc; }
+  .profile-pin {
+    font-size: 0.65rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+  }
+  .manage-link {
+    color: #888;
+    font-size: 0.8rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* PIN Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 20px 20px 0 0;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 430px;
+    text-align: center;
+  }
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: #444;
+    border-radius: 2px;
+    margin: 0 auto 1.25rem;
+  }
+  .modal h3 { font-size: 1.05rem; font-weight: 600; margin-bottom: 0.4rem; }
+  .modal p { color: #888; font-size: 0.8rem; margin-bottom: 1.25rem; }
+  .pin-input-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+  .pin-digit {
+    width: 48px;
+    height: 56px;
+    background: #242424;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: #e0e0e0;
+    font-size: 1.5rem;
+    text-align: center;
+    outline: none;
+    -webkit-appearance: none;
+  }
+  .pin-digit:focus { border-color: #6366f1; }
+  .modal-actions { display: flex; gap: 0.6rem; padding-bottom: env(safe-area-inset-bottom, 0.5rem); }
+  .modal-actions button {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 10px;
+    border: none;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .btn-cancel { background: #242424; color: #ccc; }
+  .btn-confirm { background: #6366f1; color: #fff; }
+</style>
+</head>
+<body>
+  <div class="logo">ただいま <span>tadaima</span></div>
+  <div class="subtitle">Who's watching?</div>
+
+  <div class="profiles">
+    <div class="profile" onclick="selectProfile('Noah')">
+      <div class="avatar indigo">N</div>
+      <div class="profile-name">Noah</div>
+    </div>
+    <div class="profile" onclick="showPinModal('Dad')">
+      <div class="avatar green">D</div>
+      <div class="profile-name">Dad</div>
+      <div class="profile-pin">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        PIN
+      </div>
+    </div>
+    <div class="profile" onclick="selectProfile('Sarah')">
+      <div class="avatar pink">S</div>
+      <div class="profile-name">Sarah</div>
+    </div>
+    <div class="profile" onclick="selectProfile('Mom')">
+      <div class="avatar blue">M</div>
+      <div class="profile-name">Mom</div>
+    </div>
+  </div>
+
+  <a class="manage-link" onclick="alert('Opens admin login')">Manage Profiles</a>
+
+  <div class="modal-overlay" id="pinModal" onclick="if(event.target===this)closePinModal()">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h3 id="pinName">Enter PIN for Dad</h3>
+      <p>This profile is PIN-protected</p>
+      <div class="pin-input-group">
+        <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]">
+        <input class="pin-digit" type="tel" maxlength="1" inputmode="numeric" pattern="[0-9]">
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closePinModal()">Cancel</button>
+        <button class="btn-confirm" onclick="submitPin()">Enter</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function selectProfile(name) {
+      document.body.style.opacity = '0.5';
+      setTimeout(() => { alert(`Entering as ${name}...`); document.body.style.opacity = '1'; }, 150);
+    }
+    function showPinModal(name) {
+      document.getElementById('pinName').textContent = `Enter PIN for ${name}`;
+      document.getElementById('pinModal').classList.add('active');
+      setTimeout(() => document.querySelector('.pin-digit').focus(), 100);
+    }
+    function closePinModal() {
+      document.getElementById('pinModal').classList.remove('active');
+      document.querySelectorAll('.pin-digit').forEach(d => d.value = '');
+    }
+    function submitPin() { closePinModal(); selectProfile('Dad'); }
+    document.querySelectorAll('.pin-digit').forEach((input, i, arr) => {
+      input.addEventListener('input', () => { if (input.value && i < arr.length - 1) arr[i + 1].focus(); });
+      input.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !input.value && i > 0) arr[i - 1].focus(); });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tadaima — Downloads (Mobile)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #0f0f0f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    max-width: 430px;
+    margin: 0 auto;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #1a1a1a;
+    position: sticky;
+    top: 0;
+    background: #0f0f0f;
+    z-index: 50;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 0.6rem; }
+  .top-logo { font-size: 1.1rem; font-weight: 700; }
+  .top-logo span { color: #6366f1; }
+  .top-bar-right { display: flex; align-items: center; gap: 0.75rem; }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; }
+  .profile-btn {
+    width: 30px; height: 30px; border-radius: 8px; background: #6366f120;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600; color: #6366f1; cursor: pointer;
+  }
+
+  /* Content */
+  .content { flex: 1; padding: 1rem; overflow-y: auto; padding-bottom: 5rem; }
+
+  .page-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 0.75rem; }
+
+  /* Filter Tabs */
+  .filter-scroll {
+    display: flex; gap: 0.25rem; margin-bottom: 1rem;
+    overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .filter-tab {
+    flex-shrink: 0; padding: 0.4rem 0.75rem; border-radius: 8px;
+    font-size: 0.75rem; color: #888; cursor: pointer; border: none;
+    background: #1a1a1a; white-space: nowrap;
+  }
+  .filter-tab:active { opacity: 0.7; }
+  .filter-tab.active { background: #242424; color: #e0e0e0; }
+  .filter-tab .count {
+    font-size: 0.6rem; background: #333; padding: 1px 5px;
+    border-radius: 6px; margin-left: 0.3rem;
+  }
+  .filter-tab.active .count { background: #6366f130; color: #a5b4fc; }
+
+  /* Section Headers */
+  .section-header {
+    font-size: 0.7rem; font-weight: 600; color: #666; text-transform: uppercase;
+    letter-spacing: 0.05em; margin-bottom: 0.5rem; margin-top: 0.25rem;
+  }
+
+  /* Active Download Card */
+  .download-card {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+    padding: 0.85rem 1rem; margin-bottom: 0.6rem;
+  }
+  .download-top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.4rem;
+  }
+  .download-title-row { display: flex; align-items: center; gap: 0.35rem; flex: 1; min-width: 0; }
+  .download-title {
+    font-size: 0.88rem; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .badge {
+    padding: 1px 6px; border-radius: 3px; font-size: 0.55rem; font-weight: 600; flex-shrink: 0;
+  }
+  .badge-movie { background: #6366f130; color: #a5b4fc; }
+  .badge-tv { background: #3b82f630; color: #93c5fd; }
+
+  .cancel-btn {
+    padding: 4px 10px; background: transparent; border: 1px solid #333;
+    border-radius: 6px; color: #888; font-size: 0.68rem; cursor: pointer;
+    flex-shrink: 0; margin-left: 0.5rem;
+  }
+  .cancel-btn:active { border-color: #ef4444; color: #ef4444; }
+
+  .download-device { font-size: 0.65rem; color: #666; margin-bottom: 0.4rem; }
+
+  /* Phase Steps */
+  .phase-steps {
+    display: flex; align-items: center; gap: 0.25rem; margin-bottom: 0.5rem;
+    font-size: 0.6rem; overflow-x: auto; scrollbar-width: none;
+  }
+  .phase-steps::-webkit-scrollbar { display: none; }
+  .phase-step { color: #555; white-space: nowrap; }
+  .phase-step.done { color: #22c55e; }
+  .phase-step.current { color: #eab308; font-weight: 600; }
+  .phase-arrow { color: #333; }
+
+  /* Progress Bar */
+  .progress-bar-bg {
+    height: 5px; background: #242424; border-radius: 3px; overflow: hidden; margin-bottom: 0.3rem;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, #6366f1, #818cf8);
+    transition: width 1s linear;
+  }
+  .progress-stats {
+    display: flex; justify-content: space-between; font-size: 0.65rem; color: #888;
+  }
+  .progress-speed { color: #a5b4fc; }
+
+  /* Queued Card */
+  .queued-card {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+    padding: 0.75rem 1rem; margin-bottom: 0.6rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.6rem;
+  }
+  .queued-left { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
+  .queued-icon {
+    width: 32px; height: 32px; background: #eab30815; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #eab308; font-size: 0.9rem; flex-shrink: 0;
+  }
+  .queued-info { flex: 1; min-width: 0; }
+  .queued-info-title { font-size: 0.85rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .queued-meta { font-size: 0.65rem; color: #888; }
+  .queued-warning { color: #eab308; font-size: 0.6rem; margin-top: 0.1rem; }
+
+  /* History Card */
+  .history-card {
+    background: #1a1a1a; border: 1px solid #333; border-radius: 12px;
+    padding: 0.7rem 1rem; margin-bottom: 0.5rem;
+    display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+  }
+  .history-left { display: flex; align-items: center; gap: 0.6rem; flex: 1; min-width: 0; }
+  .history-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; flex-shrink: 0;
+  }
+  .history-icon.completed { background: #22c55e15; color: #22c55e; }
+  .history-icon.failed { background: #ef444415; color: #ef4444; }
+  .history-icon.cancelled { background: #eab30815; color: #eab308; }
+  .history-info { flex: 1; min-width: 0; }
+  .history-title { font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .history-meta { font-size: 0.62rem; color: #888; }
+  .error-text { font-size: 0.6rem; color: #f87171; margin-top: 0.1rem; }
+
+  .history-right { display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0; }
+  .status-badge {
+    padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 600;
+  }
+  .status-completed { background: #22c55e20; color: #4ade80; }
+  .status-failed { background: #ef444420; color: #f87171; }
+  .status-cancelled { background: #eab30820; color: #fde68a; }
+  .retry-btn {
+    padding: 3px 8px; background: #6366f120; border: 1px solid #6366f140;
+    border-radius: 5px; color: #a5b4fc; font-size: 0.6rem; cursor: pointer;
+  }
+  .retry-btn:active { background: #6366f130; border-color: #6366f1; }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0; max-width: 430px; margin: 0 auto;
+    background: #1a1a1a; border-top: 1px solid #333;
+    display: flex; padding: 0.5rem 0; padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0));
+    z-index: 50;
+  }
+  .bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+    font-size: 0.6rem; color: #666; cursor: pointer; padding: 0.25rem 0;
+  }
+  .bottom-nav-item.active { color: #6366f1; }
+  .bottom-nav-item svg { width: 20px; height: 20px; }
+
+  /* Pull-to-refresh hint */
+  .refresh-hint {
+    text-align: center; font-size: 0.65rem; color: #444; padding: 0.4rem 0; margin-bottom: 0.25rem;
+  }
+
+  /* Empty state for sections */
+  .section-gap { margin-top: 1rem; }
+</style>
+</head>
+<body>
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="top-logo"><span>tadaima</span></div>
+    </div>
+    <div class="top-bar-right">
+      <div class="conn-dot"></div>
+      <div class="profile-btn">N</div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content">
+    <div class="page-title">Downloads</div>
+
+    <!-- Filter Tabs -->
+    <div class="filter-scroll">
+      <button class="filter-tab active" onclick="filterTab(this)">All <span class="count">7</span></button>
+      <button class="filter-tab" onclick="filterTab(this)">Active <span class="count">2</span></button>
+      <button class="filter-tab" onclick="filterTab(this)">Queued <span class="count">1</span></button>
+      <button class="filter-tab" onclick="filterTab(this)">Completed <span class="count">2</span></button>
+      <button class="filter-tab" onclick="filterTab(this)">Failed <span class="count">1</span></button>
+    </div>
+
+    <!-- Active Downloads -->
+    <div class="section-header">Active</div>
+
+    <div class="download-card">
+      <div class="download-top">
+        <div class="download-title-row">
+          <span class="download-title">Interstellar</span>
+          <span class="badge badge-movie">Movie</span>
+        </div>
+        <button class="cancel-btn">Cancel</button>
+      </div>
+      <div class="download-device">noah-macbook · 45.2 GB</div>
+      <div class="phase-steps">
+        <span class="phase-step done">Adding to RD</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step done">Waiting</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step done">Unrestricting</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step current">Downloading</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step">Organizing</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress1" style="width: 62%"></div>
+      </div>
+      <div class="progress-stats">
+        <span>62% · 28.0 / 45.2 GB</span>
+        <span class="progress-speed">18.4 MB/s · 12m left</span>
+      </div>
+    </div>
+
+    <div class="download-card">
+      <div class="download-top">
+        <div class="download-title-row">
+          <span class="download-title">Breaking Bad</span>
+          <span class="badge badge-tv">S05E16</span>
+        </div>
+        <button class="cancel-btn">Cancel</button>
+      </div>
+      <div class="download-device">noah-macbook · 1.8 GB</div>
+      <div class="phase-steps">
+        <span class="phase-step done">Adding to RD</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step done">Waiting</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step done">Unrestricting</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step current">Downloading</span>
+        <span class="phase-arrow">→</span>
+        <span class="phase-step">Organizing</span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress2" style="width: 89%"></div>
+      </div>
+      <div class="progress-stats">
+        <span>89% · 1.6 / 1.8 GB</span>
+        <span class="progress-speed">22.1 MB/s · 1m left</span>
+      </div>
+    </div>
+
+    <!-- Queued -->
+    <div class="section-header section-gap">Queued</div>
+
+    <div class="queued-card">
+      <div class="queued-left">
+        <div class="queued-icon">⏳</div>
+        <div class="queued-info">
+          <div class="queued-info-title">Dune: Part Two</div>
+          <div class="queued-meta">Waiting for sarah-pc · 2h ago</div>
+          <div class="queued-warning">Device offline — will start on reconnect</div>
+        </div>
+      </div>
+      <button class="cancel-btn">Cancel</button>
+    </div>
+
+    <!-- History -->
+    <div class="section-header section-gap">History</div>
+
+    <div class="history-card">
+      <div class="history-left">
+        <div class="history-icon completed">✓</div>
+        <div class="history-info">
+          <div class="history-title">The Matrix</div>
+          <div class="history-meta">noah-macbook · 12.4 GB · 3 min ago</div>
+        </div>
+      </div>
+      <div class="history-right">
+        <span class="status-badge status-completed">Done</span>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-left">
+        <div class="history-icon completed">✓</div>
+        <div class="history-info">
+          <div class="history-title">Oppenheimer</div>
+          <div class="history-meta">noah-macbook · 24.8 GB · 1h ago</div>
+        </div>
+      </div>
+      <div class="history-right">
+        <span class="status-badge status-completed">Done</span>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-left">
+        <div class="history-icon failed">✗</div>
+        <div class="history-info">
+          <div class="history-title">Blade Runner 2049</div>
+          <div class="history-meta">noah-macbook · 2h ago</div>
+          <div class="error-text">No seeders available</div>
+        </div>
+      </div>
+      <div class="history-right">
+        <button class="retry-btn">Retry</button>
+        <span class="status-badge status-failed">Failed</span>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="history-left">
+        <div class="history-icon cancelled">—</div>
+        <div class="history-info">
+          <div class="history-title">The Dark Knight</div>
+          <div class="history-meta">noah-macbook · 5.2 / 18.6 GB · 3h ago</div>
+        </div>
+      </div>
+      <div class="history-right">
+        <button class="retry-btn">Retry</button>
+        <span class="status-badge status-cancelled">Cancelled</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <div class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search
+    </div>
+    <div class="bottom-nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Downloads
+    </div>
+    <div class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Devices
+    </div>
+    <div class="bottom-nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </div>
+  </nav>
+
+  <script>
+    // Animate progress bars
+    let p1 = 62, p2 = 89;
+    setInterval(() => {
+      p1 = Math.min(p1 + 0.3, 100);
+      p2 = Math.min(p2 + 0.5, 100);
+      document.getElementById('progress1').style.width = p1 + '%';
+      document.getElementById('progress2').style.width = p2 + '%';
+    }, 1000);
+
+    // Filter tab interaction
+    function filterTab(el) {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+    }
+  </script>
+</body>
+</html>

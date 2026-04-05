@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tadaima — Devices</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0f0f0f;
+    color: #e0e0e0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  .sidebar {
+    width: 220px;
+    background: #1a1a1a;
+    border-right: 1px solid #333;
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 0;
+    flex-shrink: 0;
+  }
+  .sidebar-header { padding: 0 1.25rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; }
+  .sidebar-avatar { width: 36px; height: 36px; border-radius: 10px; background: #6366f120; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 600; color: #6366f1; }
+  .sidebar-user { font-size: 0.9rem; font-weight: 500; }
+  .sidebar-role { font-size: 0.7rem; color: #888; }
+  .nav-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1.25rem; font-size: 0.9rem; color: #888; cursor: pointer; transition: all 0.12s; }
+  .nav-item:hover { color: #e0e0e0; background: #242424; }
+  .nav-item.active { color: #e0e0e0; background: #242424; border-right: 2px solid #6366f1; }
+  .nav-icon { width: 18px; height: 18px; opacity: 0.7; }
+  .sidebar-footer { margin-top: auto; padding: 0.75rem 1.25rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: #888; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+
+  .main { flex: 1; overflow-y: auto; padding: 2rem 2.5rem; }
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+  .page-title { font-size: 1.4rem; font-weight: 600; }
+
+  .pair-btn {
+    padding: 0.6rem 1.2rem;
+    background: #6366f1;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .pair-btn:hover { background: #818cf8; }
+
+  .devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .device-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: border-color 0.15s;
+  }
+  .device-card:hover { border-color: #444; }
+  .device-card.default { border-color: #6366f140; }
+
+  .device-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+  .device-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .device-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: #242424;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #888;
+  }
+  .device-name {
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: text;
+  }
+  .device-name:hover { color: #6366f1; }
+  .device-platform { font-size: 0.72rem; color: #888; }
+
+  .device-status {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+  }
+  .device-status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+  .device-status .dot.online { background: #22c55e; }
+  .device-status .dot.offline { background: #ef4444; }
+  .device-status.online { color: #22c55e; }
+  .device-status.offline { color: #888; }
+
+  .device-stats {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #2a2a2a;
+  }
+  .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .stat-label { font-size: 0.65rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { font-size: 0.85rem; color: #ccc; }
+
+  .device-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .device-action {
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    border: 1px solid #333;
+    background: transparent;
+    color: #888;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .device-action:hover { border-color: #6366f1; color: #a5b4fc; }
+  .device-action.default-badge {
+    background: #6366f120;
+    border-color: #6366f140;
+    color: #a5b4fc;
+    cursor: default;
+  }
+  .device-action.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+  /* Pairing Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 16px;
+    padding: 2rem;
+    width: 400px;
+    text-align: center;
+  }
+  .modal h3 { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; }
+  .modal p { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.5; }
+  .pairing-code {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 2.8rem;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    color: #6366f1;
+    margin-bottom: 0.75rem;
+  }
+  .pairing-timer {
+    font-size: 0.8rem;
+    color: #888;
+    margin-bottom: 1.5rem;
+  }
+  .pairing-timer span { color: #eab308; }
+  .pairing-instructions {
+    background: #242424;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+    color: #a5b4fc;
+    text-align: left;
+  }
+  .modal-close {
+    padding: 0.6rem 2rem;
+    background: #242424;
+    color: #ccc;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .modal-close:hover { background: #2e2e2e; }
+</style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-avatar">N</div>
+      <div>
+        <div class="sidebar-user">Noah</div>
+        <div class="sidebar-role">Switch profile</div>
+      </div>
+    </div>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      Search
+    </a>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Downloads
+    </a>
+    <a class="nav-item active">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Devices
+    </a>
+    <a class="nav-item">
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </a>
+    <div class="sidebar-footer">
+      <div class="status-dot"></div>
+      Connected
+    </div>
+  </nav>
+
+  <main class="main">
+    <div class="page-header">
+      <div class="page-title">Devices</div>
+      <button class="pair-btn" onclick="showPairModal()">+ Pair New Device</button>
+    </div>
+
+    <div class="devices-grid">
+      <!-- Device 1: Online, Default -->
+      <div class="device-card default">
+        <div class="device-top">
+          <div class="device-identity">
+            <div class="device-icon">💻</div>
+            <div>
+              <div class="device-name">noah-macbook</div>
+              <div class="device-platform">macOS · Paired Mar 1, 2026</div>
+            </div>
+          </div>
+          <div class="device-status online">
+            <div class="dot online"></div>
+            Online
+          </div>
+        </div>
+        <div class="device-stats">
+          <div class="stat">
+            <div class="stat-label">Active Downloads</div>
+            <div class="stat-value">2</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Disk Free</div>
+            <div class="stat-value">847 GB</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value">3h 24m</div>
+          </div>
+        </div>
+        <div class="device-actions">
+          <button class="device-action default-badge">⭐ Default</button>
+          <button class="device-action">Rename</button>
+          <button class="device-action danger">Remove</button>
+        </div>
+      </div>
+
+      <!-- Device 2: Online -->
+      <div class="device-card">
+        <div class="device-top">
+          <div class="device-identity">
+            <div class="device-icon">🖥️</div>
+            <div>
+              <div class="device-name">dad-nas</div>
+              <div class="device-platform">Linux · Paired Mar 5, 2026</div>
+            </div>
+          </div>
+          <div class="device-status online">
+            <div class="dot online"></div>
+            Online
+          </div>
+        </div>
+        <div class="device-stats">
+          <div class="stat">
+            <div class="stat-label">Active Downloads</div>
+            <div class="stat-value">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Disk Free</div>
+            <div class="stat-value">2.4 TB</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Uptime</div>
+            <div class="stat-value">14d 7h</div>
+          </div>
+        </div>
+        <div class="device-actions">
+          <button class="device-action">Set as Default</button>
+          <button class="device-action">Rename</button>
+          <button class="device-action danger">Remove</button>
+        </div>
+      </div>
+
+      <!-- Device 3: Offline -->
+      <div class="device-card">
+        <div class="device-top">
+          <div class="device-identity">
+            <div class="device-icon">💻</div>
+            <div>
+              <div class="device-name">sarah-pc</div>
+              <div class="device-platform">Windows · Paired Mar 12, 2026</div>
+            </div>
+          </div>
+          <div class="device-status offline">
+            <div class="dot offline"></div>
+            Last seen 2h ago
+          </div>
+        </div>
+        <div class="device-stats">
+          <div class="stat">
+            <div class="stat-label">Queued</div>
+            <div class="stat-value">1 download</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Last Disk Free</div>
+            <div class="stat-value">124 GB</div>
+          </div>
+        </div>
+        <div class="device-actions">
+          <button class="device-action">Set as Default</button>
+          <button class="device-action">Rename</button>
+          <button class="device-action danger">Remove</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Pairing Modal -->
+  <div class="modal-overlay" id="pairModal">
+    <div class="modal">
+      <h3>Pair New Device</h3>
+      <p>Enter this code when running <code style="color: #a5b4fc;">tadaima setup</code> on your device.</p>
+      <div class="pairing-code">A7X9K2</div>
+      <div class="pairing-timer">Expires in <span id="countdown">9:42</span></div>
+      <div class="pairing-instructions">
+        $ npm install -g @tadaima/agent<br>
+        $ tadaima setup<br>
+        ? Relay URL: https://your-instance.up.railway.app<br>
+        ? Pairing code: <span style="color: #6366f1;">A7X9K2</span>
+      </div>
+      <button class="modal-close" onclick="closePairModal()">Close</button>
+    </div>
+  </div>
+
+  <script>
+    function showPairModal() { document.getElementById('pairModal').classList.add('active'); }
+    function closePairModal() { document.getElementById('pairModal').classList.remove('active'); }
+    // Countdown timer
+    let seconds = 582;
+    setInterval(() => {
+      seconds = Math.max(0, seconds - 1);
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      document.getElementById('countdown').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+    }, 1000);
+  </script>
+</body>
+</html>
