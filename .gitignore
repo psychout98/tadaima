@@ -11,3 +11,6 @@ test-results/
 playwright-report/
 blob-report/
 results.xml
+
+# TypeScript build cache
+*.tsbuildinfo
