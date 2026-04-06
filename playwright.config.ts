@@ -40,7 +40,7 @@ export default defineConfig({
     command: "pnpm dev:e2e",
     url: "http://localhost:3000/api/health",
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    timeout: 120_000,
     env: {
       ...process.env,
       NODE_ENV: process.env.NODE_ENV ?? "test",
