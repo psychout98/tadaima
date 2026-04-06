@@ -57,7 +57,7 @@ export function AdminPanel() {
       ]);
       setProfiles(p);
       setSettings(s);
-    } catch (err) {
+    } catch {
       addToast("error", "Failed to load data");
     }
   }
@@ -73,7 +73,7 @@ export function AdminPanel() {
       setNewPin("");
       setShowAdd(false);
       loadData();
-    } catch (err) {
+    } catch {
       addToast("error", "Failed to add profile");
     }
   }
@@ -83,7 +83,7 @@ export function AdminPanel() {
     try {
       await api.profiles.delete(id, adminToken);
       loadData();
-    } catch (err) {
+    } catch {
       addToast("error", "Failed to delete profile");
     }
   }
@@ -101,7 +101,7 @@ export function AdminPanel() {
       setSettingsMsg("Settings saved");
       loadData();
       setTimeout(() => setSettingsMsg(""), 3000);
-    } catch (err) {
+    } catch {
       addToast("error", "Failed to save settings");
     }
   }
