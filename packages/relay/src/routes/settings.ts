@@ -85,6 +85,10 @@ settings.post("/test-tmdb", async (c) => {
   }
 
   try {
+    // NOTE: TMDB v3 API only supports api_key as a query parameter — there is
+    // no header-based auth.  This call is server-side only; the key is never
+    // exposed to the client.  Error messages below are kept generic to avoid
+    // leaking the key in responses or logs.  (SEC-04)
     const res = await fetch(
       `https://api.themoviedb.org/3/configuration?api_key=${apiKey}`,
     );
@@ -92,7 +96,8 @@ settings.post("/test-tmdb", async (c) => {
       return c.json({ valid: true });
     }
     return c.json({ valid: false, detail: "Invalid API key" });
-  } catch {
+  } catch (err) {
+    console.error("TMDB test error:", String(err).replace(/api_key=[^&\s]+/gi, "api_key=REDACTED"));
     return c.json({ valid: false, detail: "Failed to connect to TMDB" });
   }
 });

@@ -24,6 +24,15 @@ async function getTmdbKey(): Promise<string> {
   return decrypt(row.value);
 }
 
+/**
+ * Strip API keys from a string to prevent leaking secrets in logs or error
+ * responses.  Matches the `api_key=<value>` query-parameter pattern used by
+ * TMDB v3 as well as generic "key=<hex>" patterns.
+ */
+function redactApiKeys(text: string): string {
+  return text.replace(/api_key=[^&\s]+/gi, "api_key=REDACTED");
+}
+
 const proxy = new Hono();
 
 // ── Search ─────────────────────────────────────────────────────
@@ -38,6 +47,9 @@ proxy.get("/search", async (c) => {
 
   try {
     const tmdbKey = await getTmdbKey();
+    // NOTE: TMDB v3 API requires api_key as a query parameter; there is no
+    // header-based auth option.  The key is only sent server-side (never to the
+    // client) and we redact it from any error messages below.  (SEC-04)
     const res = await fetch(
       `https://api.themoviedb.org/3/search/multi?api_key=${tmdbKey}&query=${encodeURIComponent(q)}&include_adult=false`,
     );
@@ -59,7 +71,8 @@ proxy.get("/search", async (c) => {
 
     searchCache.set(cacheKey, results, SEARCH_TTL);
     return c.json(results);
-  } catch {
+  } catch (err) {
+    console.error("TMDB search error:", redactApiKeys(String(err)));
     return c.json({ error: "UPSTREAM_ERROR", detail: "Failed to connect to TMDB" }, 502);
   }
 });
@@ -80,6 +93,7 @@ proxy.get("/media/:type/:tmdbId", async (c) => {
 
   try {
     const tmdbKey = await getTmdbKey();
+    // TMDB v3: api_key query param is the only auth method (see SEC-04 note above)
     const append = type === "tv" ? "&append_to_response=external_ids" : "&append_to_response=external_ids";
     const res = await fetch(
       `https://api.themoviedb.org/3/${type}/${tmdbId}?api_key=${tmdbKey}${append}`,
@@ -111,7 +125,8 @@ proxy.get("/media/:type/:tmdbId", async (c) => {
 
     mediaCache.set(cacheKey, detail, MEDIA_TTL);
     return c.json(detail);
-  } catch {
+  } catch (err) {
+    console.error("TMDB detail error:", redactApiKeys(String(err)));
     return c.json({ error: "UPSTREAM_ERROR", detail: "Failed to connect to TMDB" }, 502);
   }
 });
@@ -156,7 +171,8 @@ proxy.get("/streams/:type/:imdbId", async (c) => {
 
     streamCache.set(cacheKey, streams, STREAM_TTL);
     return c.json(streams);
-  } catch {
+  } catch (err) {
+    console.error("Torrentio stream fetch error:", err);
     return c.json({ error: "UPSTREAM_ERROR", detail: "Failed to connect to Torrentio" }, 502);
   }
 });
@@ -185,7 +201,8 @@ proxy.get("/poster/*", async (c) => {
     c.header("Content-Type", "image/jpeg");
     c.header("Cache-Control", "public, max-age=604800");
     return c.body(buffer as unknown as ReadableStream);
-  } catch {
+  } catch (err) {
+    console.error("Poster proxy fetch error:", err);
     return c.json({ error: "UPSTREAM_ERROR", detail: "Failed to fetch poster" }, 502);
   }
 });

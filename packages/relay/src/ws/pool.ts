@@ -46,7 +46,8 @@ export function addAgent(
   db.update(devices)
     .set({ isOnline: true, lastSeenAt: new Date() })
     .where(eq(devices.id, deviceId))
-    .then(() => broadcastDeviceStatus(profileId, deviceId, true));
+    .then(() => broadcastDeviceStatus(profileId, deviceId, true))
+    .catch((err) => console.error("pool db update failed", err));
 }
 
 export function removeAgent(profileId: string, deviceId: string): void {
@@ -57,7 +58,8 @@ export function removeAgent(profileId: string, deviceId: string): void {
   db.update(devices)
     .set({ isOnline: false, lastSeenAt: new Date() })
     .where(eq(devices.id, deviceId))
-    .then(() => broadcastDeviceStatus(profileId, deviceId, false));
+    .then(() => broadcastDeviceStatus(profileId, deviceId, false))
+    .catch((err) => console.error("pool db update failed", err));
 }
 
 export function getAgent(

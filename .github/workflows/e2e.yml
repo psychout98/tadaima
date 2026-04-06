@@ -4,10 +4,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     services:
       postgres:
@@ -26,24 +29,37 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      - name: Wait for PostgreSQL
+        run: timeout 30 bash -c 'until pg_isready -h localhost -p 5433 -U test; do sleep 1; done'
 
       - name: Install Playwright browsers
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: pnpm exec playwright test --project=chromium
+        run: pnpm exec playwright test --project=chromium --reporter=junit,list,html
         env:
           DATABASE_URL: postgres://test:test@localhost:5433/tadaima_test
           JWT_SECRET: test-secret-ci
           NODE_ENV: test
           PORT: 3000
+
+      - name: Test report annotations
+        uses: dorny/test-reporter@v1
+        if: always()
+        with:
+          name: E2E Test Results
+          path: results.xml
+          reporter: java-junit
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -1,6 +1,6 @@
 import { createWriteStream } from "node:fs";
 import { mkdir } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, resolve } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 
@@ -19,7 +19,16 @@ export async function downloadFile(
   destPath: string,
   onProgress?: (progress: DownloadProgress) => void,
   signal?: AbortSignal,
+  baseDir?: string,
 ): Promise<number> {
+  if (baseDir) {
+    const resolvedDest = resolve(destPath);
+    const resolvedBase = resolve(baseDir);
+    if (!resolvedDest.startsWith(resolvedBase + "/") && resolvedDest !== resolvedBase) {
+      throw new Error(`Path traversal detected: ${destPath} escapes base directory ${baseDir}`);
+    }
+  }
+
   await mkdir(dirname(destPath), { recursive: true });
 
   const res = await fetch(url, { signal });
@@ -72,5 +81,12 @@ export async function downloadFile(
   });
 
   await pipeline(readable, fileStream);
+
+  if (totalBytes > 0 && downloadedBytes !== totalBytes) {
+    throw new Error(
+      `Download incomplete: expected ${totalBytes} bytes but got ${downloadedBytes}`,
+    );
+  }
+
   return downloadedBytes;
 }

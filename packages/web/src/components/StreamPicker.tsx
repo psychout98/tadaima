@@ -80,7 +80,9 @@ export function StreamPicker({
 
   // Load media detail (for imdbId and TV seasons)
   useEffect(() => {
+    let cancelled = false;
     api.media(result.mediaType, result.tmdbId).then((detail) => {
+      if (cancelled) return;
       setImdbId(detail.imdbId);
       if (detail.seasons) {
         const filtered = detail.seasons.filter((s) => s.seasonNumber > 0);
@@ -91,16 +93,20 @@ export function StreamPicker({
         }
       }
     });
+    return () => { cancelled = true; };
   }, [result.tmdbId, result.mediaType]);
 
   // Load devices
   useEffect(() => {
     if (!profileToken) return;
+    let cancelled = false;
     api.devices.list(profileToken).then((d) => {
+      if (cancelled) return;
       setDevices(d);
       const def = d.find((x) => x.isDefault);
       if (def) setSelectedDevice(def.id);
     });
+    return () => { cancelled = true; };
   }, [profileToken]);
 
   // Load streams
@@ -108,6 +114,7 @@ export function StreamPicker({
     if (!imdbId) return;
     if (result.mediaType === "tv" && (selectedSeason === null || selectedEpisode === null)) return;
 
+    let cancelled = false;
     setLoading(true);
     setPage(0);
     api
@@ -117,9 +124,10 @@ export function StreamPicker({
         result.mediaType === "tv" ? selectedSeason! : undefined,
         result.mediaType === "tv" ? selectedEpisode! : undefined,
       )
-      .then(setStreams)
-      .catch(() => setStreams([]))
-      .finally(() => setLoading(false));
+      .then((s) => { if (!cancelled) setStreams(s); })
+      .catch(() => { if (!cancelled) setStreams([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [imdbId, result.mediaType, selectedSeason, selectedEpisode]);
 
   // Filtered streams
@@ -367,16 +375,14 @@ export function StreamPicker({
                             id: msgId,
                             type: "download:request",
                             timestamp: Date.now(),
-                            targetDeviceId: selectedDevice || undefined,
                             payload: {
                               tmdbId: result.tmdbId,
                               imdbId: imdbId ?? "",
                               title: result.title,
                               year: result.year ?? 0,
                               mediaType: result.mediaType,
-                              season: selectedSeason ?? undefined,
-                              episode: selectedEpisode ?? undefined,
-                              episodeTitle: undefined,
+                              ...(selectedSeason != null && { season: selectedSeason }),
+                              ...(selectedEpisode != null && { episode: selectedEpisode }),
                               magnet: s.magnet,
                               torrentName: s.title,
                               expectedSize: s.size ?? 0,

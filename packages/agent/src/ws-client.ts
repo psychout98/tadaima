@@ -50,8 +50,9 @@ export class AgentWebSocket {
         if (this.onMessage) {
           this.onMessage(msg);
         }
-      } catch {
-        // Ignore malformed
+      } catch (err) {
+        const raw = data.toString().slice(0, 200);
+        console.error("Failed to parse WebSocket message:", err, "raw:", raw);
       }
     });
 
@@ -84,7 +85,14 @@ export class AgentWebSocket {
   send(message: Record<string, unknown>): void {
     const data = JSON.stringify(message);
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(data);
+      try {
+        this.ws.send(data);
+      } catch (err) {
+        console.error("Send failed, re-queuing message:", err);
+        this.messageQueue.push(data);
+        this.cleanup();
+        this.scheduleReconnect();
+      }
     } else {
       this.messageQueue.push(data);
     }
@@ -138,7 +146,15 @@ export class AgentWebSocket {
 
   private drainQueue(): void {
     while (this.messageQueue.length > 0 && this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(this.messageQueue.shift()!);
+      try {
+        this.ws.send(this.messageQueue[0]);
+        this.messageQueue.shift();
+      } catch (err) {
+        console.error("Drain failed, will retry on reconnect:", err);
+        this.cleanup();
+        this.scheduleReconnect();
+        return;
+      }
     }
   }
 
@@ -152,10 +168,8 @@ export class AgentWebSocket {
 
   private scheduleReconnect(): void {
     if (this.stopped) return;
+    this.backoff = Math.min(this.backoff * 2, MAX_BACKOFF);
     console.log(`Reconnecting in ${this.backoff / 1000}s...`);
-    this.reconnectTimer = setTimeout(() => {
-      this.backoff = Math.min(this.backoff * 2, MAX_BACKOFF);
-      this.connect();
-    }, this.backoff);
+    this.reconnectTimer = setTimeout(() => this.connect(), this.backoff);
   }
 }

@@ -81,6 +81,8 @@ export async function runSetup() {
     name: "moviesDir",
     message: "Movies directory",
     initial: config.get("directories.movies") || "/mnt/media/Movies",
+    validate: (v: string) =>
+      v.trim().length > 0 && v.startsWith("/") ? true : "Must be a non-empty absolute path",
   });
 
   const { tvDir } = await prompts({
@@ -88,7 +90,14 @@ export async function runSetup() {
     name: "tvDir",
     message: "TV Shows directory",
     initial: config.get("directories.tv") || "/mnt/media/TV",
+    validate: (v: string) =>
+      v.trim().length > 0 && v.startsWith("/") ? true : "Must be a non-empty absolute path",
   });
+
+  if (!moviesDir || !tvDir) {
+    console.log("Setup cancelled.");
+    process.exit(0);
+  }
 
   // Save config
   config.set("relay", relayUrl);

@@ -5,15 +5,16 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_USER: tadaima
-      POSTGRES_PASSWORD: tadaima
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tadaima}
       POSTGRES_DB: tadaima_dev
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  # Dev-only: Adminer DB UI bound to localhost
   adminer:
     image: adminer
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       - postgres
 

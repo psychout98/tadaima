@@ -5,7 +5,7 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-11: Download Queue (Offline)", () => {
   let profileToken: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
@@ -29,9 +29,9 @@ test.describe("TS-11: Download Queue (Offline)", () => {
   test("11.2 — queued downloads shown in UI", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
     // Tab to queued
-    await profilePage.locator('[data-testid="tab-queued"]').click();
-    // May or may not have items
-    await profilePage.waitForTimeout(1000);
+    const tab = profilePage.locator('[data-testid="tab-queued"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("11.4 — cancel queued download via API", async () => {
@@ -76,9 +76,10 @@ test.describe("TS-11: Download Queue (Offline)", () => {
   test("11.7 — downloads page tabs work", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
     // Click through each tab
-    for (const tab of ["tab-all", "tab-active", "tab-queued", "tab-completed", "tab-failed"]) {
-      await profilePage.locator(`[data-testid="${tab}"]`).click();
-      await profilePage.waitForTimeout(200);
+    for (const tabId of ["tab-all", "tab-active", "tab-queued", "tab-completed", "tab-failed"]) {
+      const tab = profilePage.locator(`[data-testid="${tabId}"]`);
+      await tab.click();
+      await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
     }
   });
 

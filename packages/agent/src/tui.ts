@@ -1,6 +1,5 @@
 import { freemem } from "node:os";
 import { config } from "./config.js";
-import type { DownloadHandler } from "./download-handler.js";
 
 interface CompletedEntry {
   title: string;
@@ -8,10 +7,7 @@ interface CompletedEntry {
   completedAt: number;
 }
 
-const BAR_WIDTH = 30;
-
 export class TUI {
-  private handler: DownloadHandler | null = null;
   private connected = false;
   private profileName = "";
   private version = "0.0.0";
@@ -21,10 +17,6 @@ export class TUI {
   constructor(version: string) {
     this.version = version;
     this.profileName = config.get("profileName") || "Unknown";
-  }
-
-  setHandler(handler: DownloadHandler): void {
-    this.handler = handler;
   }
 
   setConnected(connected: boolean): void {
@@ -46,7 +38,6 @@ export class TUI {
   stop(): void {
     if (this.interval) clearInterval(this.interval);
     // Show cursor
-    process.stdout.write("\x1b[?25l");
     process.stdout.write("\x1b[?25h");
   }
 
@@ -60,27 +51,8 @@ export class TUI {
     );
     lines.push(` ${"─".repeat(50)}`);
 
-    // Active downloads
-    const jobs = this.handler ? this.getActiveJobs() : [];
-    if (jobs.length === 0 && this.recentCompleted.length === 0) {
+    if (this.recentCompleted.length === 0) {
       lines.push(` Waiting for downloads...`);
-    }
-
-    for (const job of jobs) {
-      const sizeStr = job.totalBytes
-        ? formatSize(job.totalBytes)
-        : "";
-      lines.push(` ↓ ${job.title.padEnd(35)} ${sizeStr.padStart(10)}`);
-
-      const filled = Math.round((job.progress / 100) * BAR_WIDTH);
-      const empty = BAR_WIDTH - filled;
-      const bar = "█".repeat(filled) + "░".repeat(empty);
-      const pct = `${Math.round(job.progress)}%`.padStart(4);
-      const speed = job.speedBps ? formatSpeed(job.speedBps) : "";
-      const eta = job.eta ? `ETA ${formatEta(job.eta)}` : "";
-
-      lines.push(`   ${bar}  ${pct}  ${speed.padStart(10)}  ${eta}`);
-      lines.push("");
     }
 
     // Recently completed
@@ -94,7 +66,7 @@ export class TUI {
     lines.push(` ${"─".repeat(50)}`);
     const diskFree = formatSize(freemem());
     lines.push(
-      ` ${jobs.length} active · ${diskFree} free`,
+      ` ${diskFree} free`,
     );
     lines.push("");
 
@@ -103,17 +75,6 @@ export class TUI {
     process.stdout.write(lines.join("\n"));
   }
 
-  private getActiveJobs(): Array<{
-    title: string;
-    progress: number;
-    totalBytes?: number;
-    speedBps?: number;
-    eta?: number;
-  }> {
-    // Access internal state via the handler's public interface
-    // For now return empty — handler needs to expose active jobs
-    return [];
-  }
 }
 
 function formatSize(bytes: number): string {
@@ -121,17 +82,6 @@ function formatSize(bytes: number): string {
   if (gb >= 1) return `${gb.toFixed(1)} GB`;
   const mb = bytes / (1024 * 1024);
   return `${mb.toFixed(0)} MB`;
-}
-
-function formatSpeed(bps: number): string {
-  const mbps = bps / (1024 * 1024);
-  return `${mbps.toFixed(1)} MB/s`;
-}
-
-function formatEta(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
 }
 
 function formatTimeAgo(timestamp: number): string {

@@ -42,8 +42,25 @@ export class DownloadHandler {
   }
 
   async handleRequest(msg: Record<string, unknown>): Promise<void> {
+    if (typeof msg.id !== "string" || !msg.id) {
+      console.error("download:request missing valid msg.id, ignoring:", msg);
+      return;
+    }
+    if (msg.payload == null || typeof msg.payload !== "object") {
+      console.error("download:request missing valid msg.payload, ignoring:", msg.id);
+      return;
+    }
     const payload = msg.payload as Record<string, unknown>;
     const requestId = msg.id as string;
+
+    if (typeof payload.magnet !== "string" || !payload.magnet) {
+      console.error("download:request missing required payload.magnet, ignoring:", requestId);
+      return;
+    }
+    if (typeof payload.title !== "string" || !payload.title) {
+      console.error("download:request missing required payload.title, ignoring:", requestId);
+      return;
+    }
 
     if (this.activeJobs.size >= this.semaphore) {
       this.sendMessage("download:rejected", {
@@ -117,7 +134,8 @@ export class DownloadHandler {
     try {
       const cached = await rdClient.checkCache(infoHashes);
       this.sendMessage("cache:result", { requestId, cached });
-    } catch {
+    } catch (err) {
+      console.warn("Cache check failed", err);
       this.sendMessage("cache:result", { requestId, cached: {} });
     }
   }

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { db } from "../db.js";
 import {
   devices,
@@ -11,7 +11,7 @@ import {
 import { signDeviceToken } from "../auth.js";
 import { decrypt } from "../crypto.js";
 import { requireAuth, requireProfile } from "../middleware.js";
-import { eq, and, count } from "drizzle-orm";
+import { eq, and, count, sql } from "drizzle-orm";
 import type { TokenPayload } from "../auth.js";
 
 const PAIRING_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1
@@ -188,42 +188,56 @@ deviceRoutes.post("/pair/claim", async (c) => {
     return c.json({ error: "PAIRING_CODE_EXPIRED", detail: "Pairing code has expired" }, 404);
   }
 
-  // Check device limit
-  const [deviceCount] = await db
-    .select({ count: count() })
-    .from(devices)
-    .where(eq(devices.profileId, pairingCode.profileId));
+  // Sign device token
+  const deviceId = randomUUID();
+  const deviceToken = await signDeviceToken(pairingCode.profileId, deviceId);
+  const tokenHash = hashToken(deviceToken);
 
-  if (deviceCount.count >= MAX_DEVICES_PER_PROFILE) {
+  // Atomic check + insert inside a transaction to prevent race condition
+  // that could exceed MAX_DEVICES_PER_PROFILE with concurrent requests.
+  // Use pg_advisory_xact_lock to serialize device creation per profile.
+  const inserted = await db.transaction(async (tx) => {
+    // Advisory lock keyed on profile UUID — serializes concurrent claims for the same profile.
+    // hashtext() converts the UUID string to a stable int for pg_advisory_xact_lock.
+    await tx.execute(
+      sql`SELECT pg_advisory_xact_lock(hashtext(${pairingCode.profileId}))`,
+    );
+
+    const [deviceCount] = await tx
+      .select({ count: count() })
+      .from(devices)
+      .where(eq(devices.profileId, pairingCode.profileId));
+
+    if (deviceCount.count >= MAX_DEVICES_PER_PROFILE) {
+      return null;
+    }
+
+    const isFirst = deviceCount.count === 0;
+
+    await tx.insert(devices).values({
+      id: deviceId,
+      profileId: pairingCode.profileId,
+      name,
+      platform,
+      tokenHash,
+      isDefault: isFirst,
+    });
+
+    // Mark code as claimed within the same transaction
+    await tx
+      .update(pairingCodes)
+      .set({ claimed: true, deviceId })
+      .where(eq(pairingCodes.code, code.toUpperCase()));
+
+    return true;
+  });
+
+  if (!inserted) {
     return c.json(
       { error: "DEVICE_LIMIT_REACHED", detail: `Maximum ${MAX_DEVICES_PER_PROFILE} devices per profile` },
       400,
     );
   }
-
-  // Check if this is the first device (auto-default)
-  const isFirst = deviceCount.count === 0;
-
-  // Sign device token
-  const deviceId = crypto.randomUUID();
-  const deviceToken = await signDeviceToken(pairingCode.profileId, deviceId);
-  const tokenHash = hashToken(deviceToken);
-
-  // Create device
-  await db.insert(devices).values({
-    id: deviceId,
-    profileId: pairingCode.profileId,
-    name,
-    platform,
-    tokenHash,
-    isDefault: isFirst,
-  });
-
-  // Mark code as claimed
-  await db
-    .update(pairingCodes)
-    .set({ claimed: true, deviceId })
-    .where(eq(pairingCodes.code, code.toUpperCase()));
 
   // Get RD API key from instance settings
   const [rdSetting] = await db

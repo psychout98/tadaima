@@ -3,6 +3,11 @@ import { TEST_ADMIN, TEST_TMDB_KEY, TEST_RD_KEY, TEST_PROFILE, API_URL } from ".
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-01: Setup Wizard", () => {
+  test.beforeAll(async () => {
+    // Reset setup state so the wizard tests work on subsequent runs
+    await fetch(`${API_URL}/setup/reset`, { method: "POST" });
+  });
+
   // 1.11 - API status pre-setup
   test("1.11 — GET /api/setup/status returns needsSetup: true on fresh DB", async ({ request }) => {
     const res = await request.get(`${API_URL}/setup/status`);
@@ -52,7 +57,7 @@ test.describe("TS-01: Setup Wizard", () => {
     await page.getByRole("button", { name: "Next" }).click();
     // Step 2
     await expect(page.locator(SEL.setupStepTmdb)).toBeVisible();
-    await page.locator('input[placeholder="TMDB API key"]').fill(TEST_TMDB_KEY);
+    await page.getByPlaceholder("TMDB API key").fill(TEST_TMDB_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.locator(SEL.setupStepRd)).toBeVisible();
   });
@@ -72,9 +77,9 @@ test.describe("TS-01: Setup Wizard", () => {
     await page.locator(SEL.usernameInput).fill(TEST_ADMIN.username);
     await page.locator(SEL.passwordInput).fill(TEST_ADMIN.password);
     await page.getByRole("button", { name: "Next" }).click();
-    await page.locator('input[placeholder="TMDB API key"]').fill(TEST_TMDB_KEY);
+    await page.getByPlaceholder("TMDB API key").fill(TEST_TMDB_KEY);
     await page.getByRole("button", { name: "Next" }).click();
-    await page.locator('input[placeholder="Real-Debrid API key"]').fill(TEST_RD_KEY);
+    await page.getByPlaceholder("Real-Debrid API key").fill(TEST_RD_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.locator(SEL.setupStepProfile)).toBeVisible();
   });
@@ -85,7 +90,7 @@ test.describe("TS-01: Setup Wizard", () => {
     await page.locator(SEL.usernameInput).fill(TEST_ADMIN.username);
     await page.locator(SEL.passwordInput).fill(TEST_ADMIN.password);
     await page.getByRole("button", { name: "Next" }).click();
-    await page.locator('input[placeholder="TMDB API key"]').fill(TEST_TMDB_KEY);
+    await page.getByPlaceholder("TMDB API key").fill(TEST_TMDB_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
   });
@@ -98,13 +103,13 @@ test.describe("TS-01: Setup Wizard", () => {
     await page.locator(SEL.passwordInput).fill(TEST_ADMIN.password);
     await page.getByRole("button", { name: "Next" }).click();
     // Step 2
-    await page.locator('input[placeholder="TMDB API key"]').fill(TEST_TMDB_KEY);
+    await page.getByPlaceholder("TMDB API key").fill(TEST_TMDB_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     // Step 3
-    await page.locator('input[placeholder="Real-Debrid API key"]').fill(TEST_RD_KEY);
+    await page.getByPlaceholder("Real-Debrid API key").fill(TEST_RD_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     // Step 4
-    await page.locator('input[placeholder*="Profile name"]').fill(TEST_PROFILE.name);
+    await page.getByPlaceholder(/Profile name/).fill(TEST_PROFILE.name);
     await page.getByRole("button", { name: "Complete Setup" }).click();
     await page.waitForURL("**/profiles");
     await expect(page.getByText(TEST_PROFILE.name)).toBeVisible();

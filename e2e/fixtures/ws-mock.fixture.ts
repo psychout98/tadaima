@@ -9,11 +9,13 @@ export class MockAgent {
   private ws: WebSocket | null = null;
   private messageHandlers: Array<(msg: Record<string, unknown>) => void> = [];
   private connected = false;
+  private relayUrl: string;
+  private deviceToken: string;
 
-  constructor(
-    private relayUrl: string = WS_URL,
-    private deviceToken: string = "",
-  ) {}
+  constructor(relayUrl: string = WS_URL, deviceToken: string = "") {
+    this.relayUrl = relayUrl;
+    this.deviceToken = deviceToken;
+  }
 
   async connect(deviceToken?: string): Promise<void> {
     if (deviceToken) this.deviceToken = deviceToken;

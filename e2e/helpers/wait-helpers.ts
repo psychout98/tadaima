@@ -22,9 +22,11 @@ export async function waitForWsConnected(page: Page) {
 /** Wait for loading state to resolve */
 export async function waitForLoaded(page: Page) {
   // Wait for any "Loading..." text to disappear
-  await page.waitForFunction(() => {
-    return !document.body.textContent?.includes("Loading...");
-  }, { timeout: 10_000 });
+  await page.waitForFunction(
+    () => !document.body.textContent?.includes("Loading..."),
+    null,
+    { timeout: 10_000 },
+  );
 }
 
 /** Dismiss all visible toasts */

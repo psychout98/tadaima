@@ -1,8 +1,9 @@
+# Supply secrets via .env file or a secrets manager (see .env.example)
 services:
   relay:
     build: .
     environment:
-      - DATABASE_URL=postgres://tadaima:tadaima@postgres:5432/tadaima
+      - DATABASE_URL=${DATABASE_URL:?Set DATABASE_URL}
       - ENCRYPTION_MASTER_KEY=${ENCRYPTION_MASTER_KEY}
       - PORT=3000
     ports:
@@ -17,7 +18,7 @@ services:
     environment:
       - POSTGRES_DB=tadaima
       - POSTGRES_USER=tadaima
-      - POSTGRES_PASSWORD=tadaima
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

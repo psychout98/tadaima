@@ -42,7 +42,7 @@ export function SearchPage() {
 
   useEffect(() => {
     loadRecent();
-  }, [loadRecent]);
+  }, [loadRecent, profileToken]);
 
   async function handleSearch(e?: React.FormEvent) {
     e?.preventDefault();

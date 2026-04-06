@@ -3,6 +3,7 @@ import { Link, Outlet, useNavigate, useLocation } from "react-router";
 import { useAuthStore } from "../lib/store";
 import { wsClient } from "../lib/ws-client";
 import { Toasts } from "../components/Toasts";
+import { messageSchema } from "@tadaima/shared";
 
 const STATUS_CONFIG = {
   connected: { color: "bg-emerald-400", label: "Connected" },
@@ -31,59 +32,95 @@ export function AppShell() {
 
     const unsubStatus = wsClient.onStatusChange(setConnectionStatus);
     const unsubMessage = wsClient.onMessage((msg) => {
-      const type = msg.type as string;
-      const payload = msg.payload as Record<string, unknown>;
+      let parsed;
+      try {
+        parsed = messageSchema.safeParse(msg);
+      } catch (err) {
+        console.warn("[ws] Failed to validate message:", err);
+        return;
+      }
 
-      if (type === "device:status") {
+      if (!parsed.success) {
+        console.warn("[ws] Invalid message received:", parsed.error.format());
+        return;
+      }
+
+      const message = parsed.data;
+
+      // Extra fields (e.g. _meta, title) may be attached by the relay but
+      // are not part of the validated schema.  Access them safely from the
+      // raw payload when needed.
+      const raw = (msg as Record<string, unknown>).payload as
+        | Record<string, unknown>
+        | undefined;
+
+      if (message.type === "device:status") {
         updateDeviceStatus(
-          payload.deviceId as string,
-          payload.isOnline as boolean,
-          payload.lastSeenAt as number,
+          message.payload.deviceId,
+          message.payload.isOnline,
+          message.payload.lastSeenAt,
         );
-      } else if (type === "download:accepted") {
-        addToast("info", `Download started: ${payload.title ?? "Unknown"}`);
+      } else if (message.type === "download:accepted") {
+        const title =
+          typeof raw?.title === "string" ? raw.title : "Unknown";
+        addToast("info", `Download started: ${title}`);
         setActiveDownload({
-          jobId: payload.jobId as string,
-          requestId: payload.requestId as string,
-          title: (payload.title as string) ?? "Unknown",
+          jobId: message.payload.jobId,
+          requestId: message.payload.requestId,
+          title,
           mediaType: "",
           phase: "adding",
           progress: 0,
         });
-      } else if (type === "download:progress") {
+      } else if (message.type === "download:progress") {
         setActiveDownload({
-          jobId: payload.jobId as string,
+          jobId: message.payload.jobId,
           requestId: "",
           title: "",
           mediaType: "",
-          phase: payload.phase as string,
-          progress: payload.progress as number,
-          downloadedBytes: payload.downloadedBytes as number | undefined,
-          totalBytes: payload.totalBytes as number | undefined,
-          speedBps: payload.speedBps as number | undefined,
-          eta: payload.eta as number | undefined,
+          phase: message.payload.phase,
+          progress: message.payload.progress,
+          downloadedBytes: message.payload.downloadedBytes,
+          totalBytes: message.payload.totalBytes,
+          speedBps: message.payload.speedBps,
+          eta: message.payload.eta,
         });
-      } else if (type === "download:completed") {
-        removeActiveDownload(payload.jobId as string);
-        const meta = payload._meta as Record<string, unknown> | undefined;
-        const title = meta?.title ?? "Download";
+      } else if (message.type === "download:completed") {
+        removeActiveDownload(message.payload.jobId);
+        const meta =
+          raw?._meta != null &&
+          typeof raw._meta === "object" &&
+          !Array.isArray(raw._meta)
+            ? (raw._meta as Record<string, unknown>)
+            : undefined;
+        const title =
+          typeof meta?.title === "string" ? meta.title : "Download";
         addToast("success", `ただいま — ${title} has arrived`);
-      } else if (type === "download:failed") {
-        removeActiveDownload(payload.jobId as string);
-        const meta = payload._meta as Record<string, unknown> | undefined;
-        const title = meta?.title ?? "Download";
-        addToast("error", `Download failed: ${title} — ${payload.error}`);
-      } else if (type === "download:queued") {
+      } else if (message.type === "download:failed") {
+        removeActiveDownload(message.payload.jobId);
+        const meta =
+          raw?._meta != null &&
+          typeof raw._meta === "object" &&
+          !Array.isArray(raw._meta)
+            ? (raw._meta as Record<string, unknown>)
+            : undefined;
+        const title =
+          typeof meta?.title === "string" ? meta.title : "Download";
+        addToast(
+          "error",
+          `Download failed: ${title} — ${message.payload.error}`,
+        );
+      } else if (message.type === "download:queued") {
         addToast(
           "info",
-          `Queued: ${payload.title} — will download when ${payload.deviceName} is online`,
+          `Queued: ${message.payload.title} — will download when ${message.payload.deviceName} is online`,
         );
-      } else if (type === "download:rejected") {
-        addToast("error", `Download rejected: ${payload.reason}`);
+      } else if (message.type === "download:rejected") {
+        addToast("error", `Download rejected: ${message.payload.reason}`);
       }
     });
 
-    wsClient.connect(profileToken);
+    wsClient.connect(() => useAuthStore.getState().profileToken!);
 
     return () => {
       wsClient.disconnect();

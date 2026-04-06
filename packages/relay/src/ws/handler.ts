@@ -159,8 +159,8 @@ function handleAgentConnection(
 
       // All other agent events → broadcast to profile's web clients
       broadcastToClients(profileId, JSON.stringify(message));
-    } catch {
-      // Ignore malformed messages
+    } catch (err) {
+      console.error("Agent WS message parse error:", err);
     }
   });
 
@@ -259,8 +259,8 @@ function handleClientConnection(ws: WebSocket, profileId: string): void {
           );
         }
       }
-    } catch {
-      // Ignore malformed messages
+    } catch (err) {
+      console.error("Client WS message parse error:", err);
     }
   });
 

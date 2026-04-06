@@ -6,7 +6,7 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-17: Toast Notifications", () => {
   let deviceToken: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {

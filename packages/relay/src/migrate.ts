@@ -37,10 +37,12 @@ export async function runMigrations() {
 
   const migrationsFolder = findMigrationsFolder();
   console.log(`Running migrations from ${migrationsFolder}...`);
-  await migrate(db, { migrationsFolder });
-  console.log("Migrations complete.");
-
-  await client.end();
+  try {
+    await migrate(db, { migrationsFolder });
+    console.log("Migrations complete.");
+  } finally {
+    await client.end();
+  }
 }
 
 // Run directly

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --require dotenv/config src/index.ts",
     "lint": "eslint src/ --ignore-pattern src/__tests__/",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

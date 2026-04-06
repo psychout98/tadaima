@@ -91,8 +91,25 @@ export const test = base.extend<AuthFixtures>({
       { accessToken, refreshToken },
     );
     await page.reload();
+    await page.waitForLoadState("networkidle");
 
     await use(page);
+
+    // Cleanup: remove any test data created during admin session
+    try {
+      const profilesRes = await fetch(`${API_URL}/profiles`);
+      const profiles = await profilesRes.json();
+      // Delete any profiles beyond the first one (the default test profile)
+      for (const p of profiles.slice(1)) {
+        await fetch(`${API_URL}/profiles/${p.id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+
     await ctx.close();
   },
 
@@ -147,6 +164,25 @@ export const test = base.extend<AuthFixtures>({
     await page.reload();
 
     await use(page);
+
+    // Cleanup: delete any devices created during this test session
+    try {
+      const devicesRes = await fetch(`${API_URL}/devices`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        for (const d of devices) {
+          await fetch(`${API_URL}/devices/${d.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${adminToken}` },
+          });
+        }
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+
     await ctx.close();
   },
 

@@ -27,12 +27,17 @@ export function startDaemon(): void {
 
   if (existsSync(pidPath)) {
     const oldPid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
-    try {
-      process.kill(oldPid, 0);
-      console.log(`Agent already running (PID ${oldPid})`);
-      return;
-    } catch {
+    if (Number.isNaN(oldPid)) {
+      console.log("Stale PID file (invalid contents). Removing.");
       unlinkSync(pidPath);
+    } else {
+      try {
+        process.kill(oldPid, 0);
+        console.log(`Agent already running (PID ${oldPid})`);
+        return;
+      } catch {
+        unlinkSync(pidPath);
+      }
     }
   }
 
@@ -66,6 +71,11 @@ export function stopDaemon(): void {
   }
 
   const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+  if (Number.isNaN(pid)) {
+    console.log("Stale PID file (invalid contents). Removing.");
+    unlinkSync(pidPath);
+    return;
+  }
 
   try {
     process.kill(pid, "SIGTERM");
@@ -85,6 +95,11 @@ export function getDaemonStatus(): { running: boolean; pid?: number } {
   }
 
   const pid = parseInt(readFileSync(pidPath, "utf-8").trim(), 10);
+  if (Number.isNaN(pid)) {
+    console.log("Stale PID file (invalid contents). Removing.");
+    unlinkSync(pidPath);
+    return { running: false };
+  }
 
   try {
     process.kill(pid, 0);

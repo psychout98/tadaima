@@ -17,14 +17,15 @@ class WebSocketClient {
   private handlers: MessageHandler[] = [];
   private statusListeners: ((status: ConnectionStatus) => void)[] = [];
   private stopped = false;
-  private token: string | null = null;
+  private getToken: (() => string) | null = null;
 
-  connect(token: string): void {
-    this.token = token;
+  connect(getToken: (() => string) | string): void {
+    this.getToken = typeof getToken === "function" ? getToken : () => getToken;
     this.stopped = false;
     this.setStatus("connecting");
 
     const wsUrl = getWsUrl();
+    const token = this.getToken();
     const url = `${wsUrl}/ws?token=${token}`;
 
     this.ws = new WebSocket(url);
@@ -112,10 +113,10 @@ class WebSocketClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.stopped || !this.token) return;
+    if (this.stopped || !this.getToken) return;
     this.reconnectTimer = setTimeout(() => {
       this.backoff = Math.min(this.backoff * 2, 30_000);
-      this.connect(this.token!);
+      this.connect(this.getToken!);
     }, this.backoff);
   }
 }

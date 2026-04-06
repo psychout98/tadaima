@@ -122,8 +122,7 @@ test.describe("TS-06: Device Management", () => {
     const cards = profilePage.locator(SEL.deviceCard);
     if ((await cards.count()) === 0) return;
     // Look for "Default" text anywhere in device list
-    const hasDefault = await profilePage.getByText("Default").isVisible().catch(() => false);
-    // This is informational - may or may not have a default
-    expect(typeof hasDefault).toBe("boolean");
+    const hasDefault = await profilePage.getByText("Default").isVisible();
+    expect(hasDefault).toBe(true);
   });
 });

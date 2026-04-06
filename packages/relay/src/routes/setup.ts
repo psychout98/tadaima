@@ -65,4 +65,23 @@ setup.post("/complete", async (c) => {
   }, 201);
 });
 
+// Test-only endpoint to reset setup state so E2E tests are idempotent
+if (process.env.NODE_ENV === "test" || process.env.NODE_ENV === "development") {
+  setup.post("/reset", async (c) => {
+    const { sql } = await import("drizzle-orm");
+    // Delete in dependency order (children before parents)
+    await db.execute(sql`DELETE FROM recently_viewed`);
+    await db.execute(sql`DELETE FROM download_history`);
+    await db.execute(sql`DELETE FROM download_queue`);
+    await db.execute(sql`DELETE FROM pairing_codes`);
+    await db.execute(sql`DELETE FROM devices`);
+    await db.execute(sql`DELETE FROM refresh_tokens`);
+    await db.execute(sql`DELETE FROM profiles`);
+    await db.execute(sql`DELETE FROM instance_settings`);
+    await db.execute(sql`DELETE FROM admin`);
+    clearSecretCache();
+    return c.json({ ok: true });
+  });
+}
+
 export { setup };

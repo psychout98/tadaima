@@ -21,7 +21,11 @@ async function request<T>(
     throw new ApiError(res.status, body.error, body.detail);
   }
 
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    return {} as T;
+  }
 }
 
 export class ApiError extends Error {

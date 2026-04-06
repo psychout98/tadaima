@@ -117,7 +117,7 @@ export const useAuthStore = create<AppState>((set) => ({
   addToast: (type, message) =>
     set((state) => ({
       toasts: [
-        { id: `toast-${Date.now()}-${Math.random()}`, type, message, createdAt: Date.now() },
+        { id: crypto.randomUUID(), type, message, createdAt: Date.now() },
         ...state.toasts,
       ].slice(0, 5),
     })),

@@ -9,33 +9,37 @@ test.describe("TS-12: Downloads Page & History", () => {
 
   test("12.2 — active downloads section exists", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    await profilePage.locator('[data-testid="tab-active"]').click();
-    // Section renders (may be empty)
-    await profilePage.waitForTimeout(500);
+    const tab = profilePage.locator('[data-testid="tab-active"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("12.3 — queued downloads section exists", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    await profilePage.locator('[data-testid="tab-queued"]').click();
-    await profilePage.waitForTimeout(500);
+    const tab = profilePage.locator('[data-testid="tab-queued"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("12.4 — history tab shows completed downloads", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    await profilePage.locator('[data-testid="tab-completed"]').click();
-    await profilePage.waitForTimeout(500);
+    const tab = profilePage.locator('[data-testid="tab-completed"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("12.5 — failed tab shows failed downloads", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    await profilePage.locator('[data-testid="tab-failed"]').click();
-    await profilePage.waitForTimeout(500);
+    const tab = profilePage.locator('[data-testid="tab-failed"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("12.6 — all tab shows everything", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    await profilePage.locator('[data-testid="tab-all"]').click();
-    await profilePage.waitForTimeout(500);
+    const tab = profilePage.locator('[data-testid="tab-all"]');
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-state", "active", { timeout: 3000 });
   });
 
   test("12.7 — history items have status badges", async ({ profilePage }) => {

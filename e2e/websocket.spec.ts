@@ -6,7 +6,7 @@ import { MockAgent } from "./fixtures/ws-mock.fixture";
 test.describe("TS-07: WebSocket Connectivity", () => {
   let deviceToken: string;
 
-  test.beforeAll(async ({}, testInfo) => {
+  test.beforeEach(async ({}, testInfo) => {
     // Pair a device for WebSocket tests
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
@@ -193,19 +193,28 @@ test.describe("TS-07: WebSocket Connectivity", () => {
 
   test("7.10 — auth required for WS connection", async () => {
     const ws = await import("ws");
-    return new Promise<void>((resolve, reject) => {
-      const socket = new ws.WebSocket(`${WS_URL}/ws?token=invalid-token`);
-      socket.on("close", (code) => {
-        expect(code).not.toBe(1000); // Should not be normal close
-        resolve();
+    let socket: InstanceType<typeof ws.WebSocket> | null = null;
+    try {
+      await new Promise<void>((resolve) => {
+        socket = new ws.WebSocket(`${WS_URL}/ws?token=invalid-token`);
+        socket.on("close", (code) => {
+          expect(code).not.toBe(1000); // Should not be normal close
+          resolve();
+        });
+        socket.on("error", () => {
+          resolve(); // Connection rejected
+        });
+        setTimeout(() => {
+          resolve();
+        }, 3000);
       });
-      socket.on("error", () => {
-        resolve(); // Connection rejected
-      });
-      setTimeout(() => {
-        socket.close();
-        resolve();
-      }, 3000);
-    });
+    } finally {
+      if (socket) {
+        const s = socket as InstanceType<typeof ws.WebSocket>;
+        if (s.readyState === ws.WebSocket.OPEN || s.readyState === ws.WebSocket.CONNECTING) {
+          s.close();
+        }
+      }
+    }
   });
 });

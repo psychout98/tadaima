@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import type { AgentConfig } from "./config.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const pkg = JSON.parse(
@@ -36,7 +37,6 @@ async function main() {
       const ws = new AgentWebSocket();
       const handler = new DownloadHandler(ws);
       const tui = new TUI(pkg.version);
-      tui.setHandler(handler);
 
       ws.setMessageHandler((msg) => {
         const type = msg.type as string;
@@ -48,12 +48,6 @@ async function main() {
           handler.handleCacheCheck(msg);
         }
       });
-
-      // Track connection status for TUI
-      const origConnect = ws.connect.bind(ws);
-      ws.connect = function () {
-        origConnect();
-      };
 
       ws.connect();
 
@@ -105,7 +99,7 @@ async function main() {
           console.log("Usage: tadaima config get <key>");
           break;
         }
-        console.log(config.get(key as never));
+        console.log(config.get(key as keyof AgentConfig));
       } else if (subcommand === "set") {
         const key = args[2];
         const value = args[3];
@@ -113,7 +107,7 @@ async function main() {
           console.log("Usage: tadaima config set <key> <value>");
           break;
         }
-        config.set(key as never, value as never);
+        config.set(key as keyof AgentConfig, value as AgentConfig[keyof AgentConfig]);
         console.log(`Set ${key} = ${value}`);
       } else if (subcommand === "list") {
         const store = config.store;

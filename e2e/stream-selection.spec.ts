@@ -81,7 +81,7 @@ test.describe("TS-09: Stream Selection", () => {
     await profilePage.getByRole("button", { name: "2160p" }).click();
     const filteredCount = await profilePage.locator(SEL.streamRow).count();
     expect(filteredCount).toBeLessThanOrEqual(initialCount);
-    await profilePage.getByText(/Clear/).click();
+    await profilePage.getByRole("button", { name: /Clear/ }).click();
     const restoredCount = await profilePage.locator(SEL.streamRow).count();
     expect(restoredCount).toBe(initialCount);
   });
@@ -139,7 +139,7 @@ test.describe("TS-09: Stream Selection", () => {
   test("9.8 — stream count shown", async ({ profilePage }) => {
     await openStreams(profilePage);
     await profilePage.locator(SEL.streamRow).first().waitFor();
-    await expect(profilePage.getByText(/Showing \d+ of \d+ streams/)).toBeVisible();
+    await expect(profilePage.getByText(/Showing \d+ of \d+ streams/i)).toBeVisible();
   });
 
   test("9.12 — default device pre-selected", async ({ profilePage }) => {

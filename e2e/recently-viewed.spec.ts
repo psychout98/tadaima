@@ -6,7 +6,7 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-14: Recently Viewed", () => {
   let profileToken: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
@@ -66,12 +66,12 @@ test.describe("TS-14: Recently Viewed", () => {
   });
 
   test("14.3 — recently viewed order (most recent first)", async () => {
-    // Add two items
+    // Add two items with a small delay between to ensure ordering
     for (const item of [
       { tmdbId: 100, title: "First", year: 2020, mediaType: "movie" },
       { tmdbId: 200, title: "Second", year: 2021, mediaType: "movie" },
     ]) {
-      await fetch(`${API_URL}/recently-viewed`, {
+      const postRes = await fetch(`${API_URL}/recently-viewed`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -79,7 +79,7 @@ test.describe("TS-14: Recently Viewed", () => {
         },
         body: JSON.stringify({ ...item, posterPath: null, imdbId: null }),
       });
-      await new Promise((r) => setTimeout(r, 100));
+      expect(postRes.ok).toBeTruthy();
     }
 
     const res = await fetch(`${API_URL}/recently-viewed`, {
@@ -106,13 +106,11 @@ test.describe("TS-14: Recently Viewed", () => {
     await mockExternalApis(profilePage);
     await profilePage.goto("/");
     const recentSection = profilePage.locator(SEL.recentlyViewed);
-    if (await recentSection.isVisible({ timeout: 3000 }).catch(() => false)) {
-      const firstItem = recentSection.locator("button").first();
-      if (await firstItem.isVisible().catch(() => false)) {
-        await firstItem.click();
-        await expect(profilePage.locator(SEL.streamPicker)).toBeVisible({ timeout: 5000 });
-      }
-    }
+    await expect(recentSection).toBeVisible({ timeout: 3000 });
+    const firstItem = recentSection.locator("button").first();
+    await expect(firstItem).toBeVisible();
+    await firstItem.click();
+    await expect(profilePage.locator(SEL.streamPicker)).toBeVisible({ timeout: 5000 });
   });
 
   test("14.7 — duplicate viewing updates timestamp", async () => {

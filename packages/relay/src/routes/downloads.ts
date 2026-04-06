@@ -1,17 +1,16 @@
 import { Hono } from "hono";
 import { db } from "../db.js";
 import { downloadQueue, downloadHistory } from "@tadaima/shared";
-import { requireAuth, requireProfile } from "../middleware.js";
+import { requireAuth, requireProfile, type Env } from "../middleware.js";
 import { eq, and, desc } from "drizzle-orm";
 
-const downloadRoutes = new Hono();
+const downloadRoutes = new Hono<Env>();
 
 downloadRoutes.use("/*", requireAuth, requireProfile);
 
 // List queued downloads for current profile
 downloadRoutes.get("/queue", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
 
   const rows = await db
@@ -40,8 +39,7 @@ downloadRoutes.get("/queue", async (c) => {
 
 // Cancel a queued download
 downloadRoutes.delete("/queue/:id", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
   const id = c.req.param("id");
 
@@ -63,10 +61,9 @@ downloadRoutes.delete("/queue/:id", async (c) => {
 
 // List download history
 downloadRoutes.get("/", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
-  const limit = Math.min(parseInt(c.req.query("limit") ?? "50"), 100);
+  const limit = Math.min(parseInt(c.req.query("limit") || "50", 10) || 50, 100);
   const offset = parseInt(c.req.query("offset") ?? "0");
   const status = c.req.query("status");
 
@@ -120,8 +117,7 @@ downloadRoutes.get("/", async (c) => {
 
 // Delete history entry
 downloadRoutes.delete("/:id", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
   const id = c.req.param("id");
 

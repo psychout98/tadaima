@@ -5,6 +5,10 @@ on:
     tags:
       - "v*"
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 permissions:
   contents: write
   packages: write
@@ -14,6 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate release tag
+        run: |
+          TAG=${{ github.ref_name }}
+          if ! [[ $TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag format: $TAG. Expected vX.Y.Z" && exit 1
+          fi
 
       - uses: pnpm/action-setup@v4
         with:
@@ -92,7 +103,7 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          PREV_TAG=$(git tag --sort=-v:refname | sed -n '2p')
+          PREV_TAG=$(git tag --sort=-version:refname | sed -n '2p')
           if [ -z "$PREV_TAG" ]; then
             echo "body=Initial release" >> $GITHUB_OUTPUT
           else

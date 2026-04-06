@@ -10,12 +10,13 @@
     "test": "turbo test",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
     "dev:e2e": "turbo build --filter=@tadaima/web && turbo dev --filter=@tadaima/relay",
     "typecheck": "turbo typecheck"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
-    "@playwright/test": "^1.59.1",
+    "@playwright/test": "1.48.2",
     "@types/ws": "^8.18.1",
     "eslint": "^9.20.0",
     "prettier": "^3.5.0",

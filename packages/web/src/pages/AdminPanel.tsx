@@ -23,7 +23,7 @@ const AVATAR_COLORS = [
 
 export function AdminPanel() {
   const navigate = useNavigate();
-  const { adminToken, clearAdminAuth } = useAuthStore();
+  const { adminToken, clearAdminAuth, addToast } = useAuthStore();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [settings, setSettings] = useState<{
     rdApiKey: string | null;
@@ -50,30 +50,42 @@ export function AdminPanel() {
   }, [adminToken, navigate]);
 
   async function loadData() {
-    const [p, s] = await Promise.all([
-      api.profiles.list(),
-      api.settings.get(adminToken!),
-    ]);
-    setProfiles(p);
-    setSettings(s);
+    try {
+      const [p, s] = await Promise.all([
+        api.profiles.list(),
+        api.settings.get(adminToken!),
+      ]);
+      setProfiles(p);
+      setSettings(s);
+    } catch (err) {
+      addToast("error", "Failed to load data");
+    }
   }
 
   async function handleAddProfile() {
     if (!newName || !adminToken) return;
-    await api.profiles.create(
-      { name: newName, avatar: newAvatar, pin: newPin || undefined },
-      adminToken,
-    );
-    setNewName("");
-    setNewPin("");
-    setShowAdd(false);
-    loadData();
+    try {
+      await api.profiles.create(
+        { name: newName, avatar: newAvatar, pin: newPin || undefined },
+        adminToken,
+      );
+      setNewName("");
+      setNewPin("");
+      setShowAdd(false);
+      loadData();
+    } catch (err) {
+      addToast("error", "Failed to add profile");
+    }
   }
 
   async function handleDeleteProfile(id: string) {
     if (!adminToken) return;
-    await api.profiles.delete(id, adminToken);
-    loadData();
+    try {
+      await api.profiles.delete(id, adminToken);
+      loadData();
+    } catch (err) {
+      addToast("error", "Failed to delete profile");
+    }
   }
 
   async function handleSaveSettings() {
@@ -82,12 +94,16 @@ export function AdminPanel() {
     if (editRd) data.rdApiKey = editRd;
     if (editTmdb) data.tmdbApiKey = editTmdb;
     if (Object.keys(data).length === 0) return;
-    await api.settings.update(data, adminToken);
-    setEditRd("");
-    setEditTmdb("");
-    setSettingsMsg("Settings saved");
-    loadData();
-    setTimeout(() => setSettingsMsg(""), 3000);
+    try {
+      await api.settings.update(data, adminToken);
+      setEditRd("");
+      setEditTmdb("");
+      setSettingsMsg("Settings saved");
+      loadData();
+      setTimeout(() => setSettingsMsg(""), 3000);
+    } catch (err) {
+      addToast("error", "Failed to save settings");
+    }
   }
 
   function handleLogout() {

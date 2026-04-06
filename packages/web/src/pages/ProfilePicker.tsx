@@ -12,7 +12,7 @@ interface Profile {
 
 export function ProfilePicker() {
   const navigate = useNavigate();
-  const { adminToken, setProfileSession } = useAuthStore();
+  const { adminToken, setProfileSession, addToast } = useAuthStore();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
@@ -40,6 +40,7 @@ export function ProfilePicker() {
       navigate("/");
     } catch (e) {
       console.error(e);
+      addToast("error", "Failed to select profile");
     }
   }
 

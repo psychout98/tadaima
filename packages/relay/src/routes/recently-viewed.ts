@@ -1,15 +1,14 @@
 import { Hono } from "hono";
 import { db } from "../db.js";
 import { recentlyViewed } from "@tadaima/shared";
-import { requireAuth, requireProfile } from "../middleware.js";
-import { eq, and, desc } from "drizzle-orm";
-const recentlyViewedRoutes = new Hono();
+import { requireAuth, requireProfile, type Env } from "../middleware.js";
+import { eq, and, desc, inArray } from "drizzle-orm";
+const recentlyViewedRoutes = new Hono<Env>();
 
 recentlyViewedRoutes.use("/*", requireAuth, requireProfile);
 
 recentlyViewedRoutes.get("/", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
 
   const rows = await db
@@ -34,8 +33,7 @@ recentlyViewedRoutes.get("/", async (c) => {
 });
 
 recentlyViewedRoutes.post("/", async (c) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const token = (c as any).get("token") as { sub: string };
+  const token = c.get("token");
   const profileId = token.sub;
   const body = await c.req.json();
 
@@ -83,9 +81,7 @@ recentlyViewedRoutes.post("/", async (c) => {
 
     if (all.length > 20) {
       const toDelete = all.slice(20).map((r) => r.id);
-      for (const id of toDelete) {
-        await db.delete(recentlyViewed).where(eq(recentlyViewed.id, id));
-      }
+      await db.delete(recentlyViewed).where(inArray(recentlyViewed.id, toDelete));
     }
   }
 

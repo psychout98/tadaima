@@ -6,7 +6,7 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-13: Real-Time Progress UI", () => {
   let deviceToken: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
@@ -56,9 +56,8 @@ test.describe("TS-13: Real-Time Progress UI", () => {
 
     // Check for progress display
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "LiveProgress" });
-    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(card.getByText(/\d+%/)).toBeVisible();
-    }
+    await expect(card).toBeVisible({ timeout: 3000 });
+    await expect(card.getByText(/\d+%/)).toBeVisible();
 
     await agent.completeDownload("progress-live");
     await agent.disconnect();
@@ -83,9 +82,8 @@ test.describe("TS-13: Real-Time Progress UI", () => {
     await agent.sendProgress("speed-test", 30, 15_000_000);
 
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "SpeedTest" });
-    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(card.getByText(/MB\/s/)).toBeVisible({ timeout: 3000 }).catch(() => {});
-    }
+    await expect(card).toBeVisible({ timeout: 3000 });
+    await expect(card.getByText(/MB\/s/)).toBeVisible({ timeout: 3000 });
 
     await agent.completeDownload("speed-test");
     await agent.disconnect();
@@ -226,9 +224,8 @@ test.describe("TS-13: Real-Time Progress UI", () => {
     await agent.sendProgress("eta-test", 40, 10_000_000);
 
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "ETATest" });
-    if (await card.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await expect(card.getByText(/ETA/)).toBeVisible({ timeout: 3000 }).catch(() => {});
-    }
+    await expect(card).toBeVisible({ timeout: 3000 });
+    await expect(card.getByText(/ETA/)).toBeVisible({ timeout: 3000 });
 
     await agent.completeDownload("eta-test");
     await agent.disconnect();

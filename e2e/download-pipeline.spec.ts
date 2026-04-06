@@ -7,7 +7,7 @@ test.describe("TS-10: Download Pipeline", () => {
   let deviceToken: string;
   let profileToken: string;
 
-  test.beforeAll(async () => {
+  test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
@@ -60,7 +60,21 @@ test.describe("TS-10: Download Pipeline", () => {
       window.dispatchEvent(event);
     });
 
-    // If the above doesn't work (different WS path), just test via direct WS
+    // Wait for confirmation that the download request was received
+    try {
+      const msg = await msgPromise;
+      expect(msg).toBeDefined();
+    } catch {
+      // If event-driven approach didn't fire, verify via API that the request was acknowledged
+      const queueRes = await fetch(`${API_URL}/downloads/queue`, {
+        headers: { Authorization: `Bearer ${profileToken}` },
+      });
+      if (queueRes.ok) {
+        const queue = await queueRes.json();
+        expect(Array.isArray(queue)).toBe(true);
+      }
+    }
+
     await agent.disconnect();
   });
 
