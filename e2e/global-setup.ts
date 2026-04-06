@@ -1,21 +1,16 @@
 import { API_URL } from "./helpers/constants";
 
 async function globalSetup() {
-  // Wait for server to be ready
-  const maxRetries = 30;
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      const res = await fetch(`${API_URL}/health`);
-      if (res.ok) {
-        console.log("Server is ready");
-        return;
-      }
-    } catch {
-      // Server not ready yet
+  // Server is already running (Playwright webServer guarantees this).
+  // Reset test state for a clean run.
+  try {
+    const res = await fetch(`${API_URL}/setup/reset`, { method: "POST" });
+    if (!res.ok) {
+      console.warn("Setup reset failed (may be first run):", res.status);
     }
-    await new Promise((r) => setTimeout(r, 1000));
+  } catch {
+    console.warn("Setup reset request failed (server may not support it yet)");
   }
-  throw new Error("Server did not start within timeout");
 }
 
 export default globalSetup;

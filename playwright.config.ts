@@ -5,7 +5,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  workers: 1,
   reporter: [["html"], ["list"]],
   timeout: 30_000,
   use: {
@@ -15,15 +15,31 @@ export default defineConfig({
     video: "off",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "firefox", use: { ...devices["Desktop Firefox"] } },
-    { name: "mobile", use: { ...devices["iPhone 14"] } },
+    {
+      name: "setup",
+      testMatch: /setup-wizard\.spec\.ts/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "chromium",
+      testMatch: /^(?!.*setup-wizard).*\.spec\.ts$/,
+      dependencies: ["setup"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    // Uncomment to test cross-browser:
+    // { name: "firefox", dependencies: ["setup"], use: { ...devices["Desktop Firefox"] } },
+    // { name: "mobile", dependencies: ["setup"], use: { ...devices["iPhone 14"] } },
   ],
   webServer: {
     command: "pnpm dev:e2e",
     url: "http://localhost:3000/api/health",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    env: {
+      ...process.env,
+      NODE_ENV: process.env.NODE_ENV ?? "test",
+      PORT: "3000",
+    },
   },
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",

@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures/auth.fixture";
 import { API_URL, TEST_ADMIN } from "./helpers/constants";
 
 test.describe("TS-19: Auth Guards & Token Lifecycle", () => {

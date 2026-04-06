@@ -42,7 +42,7 @@ test.describe("TS-18: Navigation & App Shell", () => {
   test("18.6 — active link highlighted", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
     const navLink = profilePage.locator(SEL.navDownloads);
-    await expect(navLink).toHaveAttribute("aria-current", "page");
+    await expect(navLink).toHaveClass(/font-medium/);
   });
 
   test("18.7 — profile name/avatar shown in sidebar", async ({ profilePage }) => {

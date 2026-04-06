@@ -5,10 +5,14 @@ const IV_LENGTH = 12;
 
 
 function getKey(): Buffer {
-  const key = process.env.ENCRYPTION_MASTER_KEY;
+  const key = process.env.ENCRYPTION_MASTER_KEY
+    ?? (process.env.NODE_ENV !== "production"
+      ? "0".repeat(64) // deterministic test/dev key
+      : undefined);
+
   if (!key) {
     throw new Error(
-      "ENCRYPTION_MASTER_KEY environment variable is required. " +
+      "ENCRYPTION_MASTER_KEY environment variable is required in production. " +
         "Generate one with: openssl rand -hex 32",
     );
   }

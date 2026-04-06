@@ -9,6 +9,7 @@ test.describe("TS-14: Recently Viewed", () => {
   test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
+    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

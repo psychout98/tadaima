@@ -10,6 +10,7 @@ test.describe("TS-10: Download Pipeline", () => {
   test.beforeEach(async () => {
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
+    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -22,12 +23,14 @@ test.describe("TS-10: Download Pipeline", () => {
       method: "POST",
       headers: { Authorization: `Bearer ${profileToken}` },
     });
+    if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
     const { code } = await codeRes.json();
     const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, deviceName: "DL-Test-Device", platform: "linux" }),
     });
+    if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
     const claimBody = await claimRes.json();
     deviceToken = claimBody.deviceToken;
   });
@@ -182,7 +185,7 @@ test.describe("TS-10: Download Pipeline", () => {
     // Check for active download card
     await expect(
       profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "ProgressMovie" }),
-    ).toBeVisible({ timeout: 5_000 }).catch(() => {});
+    ).toBeVisible({ timeout: 5_000 });
 
     // Complete it
     await agent.completeDownload("progress-test");
@@ -194,7 +197,7 @@ test.describe("TS-10: Download Pipeline", () => {
     // Check that history section can load
     const historySection = profilePage.locator(SEL.downloadHistory);
     // May or may not have entries depending on test order
-    await profilePage.waitForTimeout(1000);
+    await profilePage.waitForLoadState("networkidle");
   });
 
   test("10.9 — download queue accessible via API", async () => {

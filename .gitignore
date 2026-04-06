@@ -5,3 +5,9 @@ dist/
 *.local
 .DS_Store
 planning/
+
+# Playwright test results
+test-results/
+playwright-report/
+blob-report/
+results.xml

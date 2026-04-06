@@ -2,9 +2,10 @@ import { test, expect } from "@playwright/test";
 import { TEST_ADMIN, TEST_TMDB_KEY, TEST_RD_KEY, TEST_PROFILE, API_URL } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
-test.describe("TS-01: Setup Wizard", () => {
-  test.beforeAll(async () => {
-    // Reset setup state so the wizard tests work on subsequent runs
+test.describe("TS-01a: Setup Wizard (pre-setup)", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeEach(async () => {
     await fetch(`${API_URL}/setup/reset`, { method: "POST" });
   });
 
@@ -93,6 +94,14 @@ test.describe("TS-01: Setup Wizard", () => {
     await page.getByPlaceholder("TMDB API key").fill(TEST_TMDB_KEY);
     await page.getByRole("button", { name: "Next" }).click();
     await expect(page.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+});
+
+test.describe("TS-01b: Setup Wizard (complete flow)", () => {
+  test.describe.configure({ mode: "serial" });
+
+  test.beforeAll(async () => {
+    await fetch(`${API_URL}/setup/reset`, { method: "POST" });
   });
 
   // 1.9 - Step 4: Complete setup (creates admin + first profile)

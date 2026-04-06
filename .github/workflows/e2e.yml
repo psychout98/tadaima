@@ -46,10 +46,11 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run E2E tests
-        run: pnpm exec playwright test --project=chromium --reporter=junit,list,html
+        run: pnpm exec playwright test --reporter=junit,list,html
         env:
           DATABASE_URL: postgres://test:test@localhost:5433/tadaima_test
           JWT_SECRET: test-secret-ci
+          ENCRYPTION_MASTER_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
           NODE_ENV: test
           PORT: 3000
 

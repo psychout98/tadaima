@@ -163,9 +163,23 @@ export const test = base.extend<AuthFixtures>({
     );
     await page.reload();
 
+    // Snapshot devices before test
+    let beforeDeviceIds = new Set<string>();
+    try {
+      const devicesRes = await fetch(`${API_URL}/devices`, {
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (devicesRes.ok) {
+        const devices = await devicesRes.json();
+        beforeDeviceIds = new Set(devices.map((d: { id: string }) => d.id));
+      }
+    } catch {
+      // Best-effort
+    }
+
     await use(page);
 
-    // Cleanup: delete any devices created during this test session
+    // Cleanup: only delete devices created during this test
     try {
       const devicesRes = await fetch(`${API_URL}/devices`, {
         headers: { Authorization: `Bearer ${adminToken}` },
@@ -173,10 +187,12 @@ export const test = base.extend<AuthFixtures>({
       if (devicesRes.ok) {
         const devices = await devicesRes.json();
         for (const d of devices) {
-          await fetch(`${API_URL}/devices/${d.id}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${adminToken}` },
-          });
+          if (!beforeDeviceIds.has(d.id)) {
+            await fetch(`${API_URL}/devices/${d.id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${adminToken}` },
+            });
+          }
         }
       }
     } catch {

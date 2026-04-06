@@ -10,6 +10,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
     // Pair a device for WebSocket tests
     const profilesRes = await fetch(`${API_URL}/profiles`);
     const profiles = await profilesRes.json();
+    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
     const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -21,6 +22,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
     });
+    if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
     const { code } = await codeRes.json();
 
     const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
@@ -28,6 +30,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code, deviceName: "WS-Test-Device", platform: "linux" }),
     });
+    if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
     const body = await claimRes.json();
     deviceToken = body.deviceToken;
   });
