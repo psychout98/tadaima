@@ -1,0 +1,50 @@
+#!/bin/bash
+# Tadaima Agent — macOS installer preflight script
+# Downloads the latest agent binary from GitHub Releases and verifies its checksum.
+
+set -e
+
+REPO="psychout98/tadaima"
+
+ARCH=$(uname -m)
+if [ "$ARCH" = "arm64" ]; then
+  ASSET="tadaima-agent-darwin-arm64"
+else
+  ASSET="tadaima-agent-darwin-x64"
+fi
+
+echo "Detecting architecture: ${ARCH} → ${ASSET}"
+
+# Get the latest release tag
+LATEST=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+if [ -z "$LATEST" ]; then
+  echo "ERROR: Could not determine latest release." >&2
+  exit 1
+fi
+
+echo "Latest release: ${LATEST}"
+
+# Download binary
+echo "Downloading ${ASSET}..."
+curl -fSL -o /tmp/tadaima-agent \
+  "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
+
+# Download and verify checksum
+echo "Verifying checksum..."
+curl -fSL -o /tmp/checksums.sha256 \
+  "https://github.com/${REPO}/releases/download/${LATEST}/checksums.sha256"
+
+EXPECTED=$(grep "${ASSET}" /tmp/checksums.sha256 | awk '{print $1}')
+ACTUAL=$(shasum -a 256 /tmp/tadaima-agent | awk '{print $1}')
+
+if [ "$EXPECTED" != "$ACTUAL" ]; then
+  echo "ERROR: Checksum mismatch!" >&2
+  echo "  Expected: ${EXPECTED}" >&2
+  echo "  Actual:   ${ACTUAL}" >&2
+  rm -f /tmp/tadaima-agent /tmp/checksums.sha256
+  exit 1
+fi
+
+echo "Checksum verified."
+chmod +x /tmp/tadaima-agent
+rm -f /tmp/checksums.sha256

@@ -10,6 +10,9 @@ export * from "./errors.js";
 // Database schema (Drizzle)
 export * from "./db/schema.js";
 
+// Version infrastructure
+export * from "./version.js";
+
 // Utilities
 export {
   createMessageId,

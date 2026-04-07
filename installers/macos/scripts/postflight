@@ -1,0 +1,34 @@
+#!/bin/bash
+# Tadaima Agent — macOS installer postflight script
+# Moves binary to /usr/local/bin, runs setup if needed, and installs the launchd service.
+
+set -e
+
+INSTALL_DIR="/usr/local/bin"
+CONF_DIR="${HOME}/.config/tadaima"
+BINARY="${INSTALL_DIR}/tadaima-agent"
+
+# Ensure install directory exists
+mkdir -p "${INSTALL_DIR}"
+
+# Move downloaded binary into place
+mv /tmp/tadaima-agent "${BINARY}"
+chmod +x "${BINARY}"
+
+echo "Installed to ${BINARY}"
+
+# Run interactive setup if not already configured
+if [ ! -f "${CONF_DIR}/config.json" ]; then
+  echo "Running first-time setup..."
+  # Open Terminal for interactive setup
+  osascript -e "
+    tell application \"Terminal\"
+      activate
+      do script \"${BINARY} setup && ${BINARY} install-service\"
+    end tell
+  "
+  echo "Setup wizard opened in Terminal."
+else
+  echo "Existing configuration found. Installing service..."
+  "${BINARY}" install-service || true
+fi

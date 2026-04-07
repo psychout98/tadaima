@@ -16,6 +16,9 @@ export interface AgentConfig {
   };
   maxConcurrentDownloads: number;
   rdPollInterval: number;
+  lastUpdateCheck: string;
+  updateChannel: "stable";
+  previousBinaryPath: string;
 }
 
 export const config = new Conf<AgentConfig>({
@@ -36,5 +39,8 @@ export const config = new Conf<AgentConfig>({
     },
     maxConcurrentDownloads: 2,
     rdPollInterval: 30,
+    lastUpdateCheck: "",
+    updateChannel: "stable",
+    previousBinaryPath: "",
   },
 });

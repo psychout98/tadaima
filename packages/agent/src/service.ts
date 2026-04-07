@@ -13,12 +13,7 @@ export function installService(): void {
   } else if (os === "darwin") {
     installLaunchd();
   } else if (os === "win32") {
-    console.log(
-      "Windows service installation requires the MSI installer or node-windows.",
-    );
-    console.log(
-      "Run the Tadaima installer (.msi) for automatic service registration.",
-    );
+    installWindows();
   } else {
     console.log(`Unsupported platform: ${os}`);
   }
@@ -31,8 +26,71 @@ export function uninstallService(): void {
     uninstallSystemd();
   } else if (os === "darwin") {
     uninstallLaunchd();
+  } else if (os === "win32") {
+    uninstallWindows();
   } else {
     console.log(`Unsupported platform: ${os}`);
+  }
+}
+
+// ── Windows Service (sc.exe) ──────────────────────────────────
+
+function installWindows(): void {
+  const execPath = process.execPath;
+  const scriptPath = process.argv[1];
+  const serviceName = "TadaimaAgent";
+
+  try {
+    execSync(
+      `sc create ${serviceName} binPath= "\\"${execPath}\\" \\"${scriptPath}\\" start" start= auto DisplayName= "Tadaima Agent"`,
+    );
+    execSync(
+      `sc description ${serviceName} "Tadaima media download agent"`,
+    );
+    // Recovery: restart on failure with escalating delays (5s, 10s, 30s)
+    execSync(
+      `sc failure ${serviceName} reset= 60 actions= restart/5000/restart/10000/restart/30000`,
+    );
+    execSync(`sc start ${serviceName}`);
+
+    console.log(`Windows Service installed and started: ${serviceName}`);
+    console.log(`  Status: sc query ${serviceName}`);
+    console.log(`  Stop:   sc stop ${serviceName}`);
+    console.log("");
+    console.log(
+      "Note: The service runs as LocalSystem by default. If it needs access",
+    );
+    console.log(
+      "to user directories, configure it to run as your user account:",
+    );
+    console.log(
+      `  sc config ${serviceName} obj= ".\\USERNAME" password= "PASSWORD"`,
+    );
+  } catch (err) {
+    console.error(
+      "Failed to install Windows Service. Try running as Administrator.",
+      err instanceof Error ? err.message : "",
+    );
+  }
+}
+
+function uninstallWindows(): void {
+  const serviceName = "TadaimaAgent";
+
+  try {
+    execSync(`sc stop ${serviceName}`);
+  } catch {
+    // May not be running
+  }
+
+  try {
+    execSync(`sc delete ${serviceName}`);
+    console.log(`Windows Service removed: ${serviceName}`);
+  } catch (err) {
+    console.error(
+      "Failed to uninstall Windows Service. Try running as Administrator.",
+      err instanceof Error ? err.message : "",
+    );
   }
 }
 

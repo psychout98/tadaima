@@ -66,12 +66,27 @@ Open the relay URL in your browser. The setup wizard walks you through:
 
 ### 3. Install the Agent
 
+**Windows** — Download [Tadaima-Setup.msi](https://github.com/psychout98/tadaima/releases/latest/download/Tadaima-Setup.msi) and run the installer. It downloads the latest agent, registers a Windows Service, and starts on login automatically.
+
+**macOS** — Download [Tadaima-Setup.dmg](https://github.com/psychout98/tadaima/releases/latest/download/Tadaima-Setup.dmg), open it, and run the installer package. It downloads the latest agent, installs a launchd service, and starts on login automatically.
+
 **npm (all platforms):**
 ```bash
 npm install -g @tadaima/agent
 tadaima-agent setup
-tadaima-agent start
+tadaima-agent install-service   # start on login
 ```
+
+**Standalone binary (Linux):**
+```bash
+curl -L -o /usr/local/bin/tadaima-agent \
+  https://github.com/psychout98/tadaima/releases/latest/download/tadaima-agent-linux-x64
+chmod +x /usr/local/bin/tadaima-agent
+tadaima-agent setup
+tadaima-agent install-service
+```
+
+The agent checks for updates on startup and every 24 hours. Service installations update and restart seamlessly. npm and Docker users see an update notice in the logs.
 
 **Docker:**
 
@@ -149,6 +164,8 @@ tadaima-agent status             # Show connection status
 tadaima-agent config list        # Show configuration
 tadaima-agent logs -f            # Follow log output
 tadaima-agent install-service    # Install as system service
+tadaima-agent update             # Check for and apply updates
+tadaima-agent rollback           # Restore previous version
 tadaima-agent version            # Show version
 ```
 

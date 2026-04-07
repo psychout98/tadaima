@@ -19,6 +19,7 @@ import { agentConfig } from "./routes/agent-config.js";
 import { proxy } from "./routes/proxy.js";
 import { recentlyViewedRoutes } from "./routes/recently-viewed.js";
 import { downloadRoutes } from "./routes/downloads.js";
+import { versionRoute } from "./routes/version.js";
 import { securityHeaders } from "./middleware.js";
 import { attachWebSocket } from "./ws/handler.js";
 import { startStaleReaper, stopStaleReaper } from "./ws/pool.js";
@@ -70,11 +71,7 @@ app.get("/api/health", (c) => {
   return c.json({ status: "ok" });
 });
 
-app.get("/api/version", (c) => {
-  return c.json({
-    version: relayVersion,
-  });
-});
+app.route("/api/version", versionRoute);
 
 app.route("/api/setup", setup);
 app.route("/api/auth", auth);

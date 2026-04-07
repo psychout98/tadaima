@@ -33,10 +33,62 @@ async function main() {
       const { AgentWebSocket } = await import("./ws-client.js");
       const { DownloadHandler } = await import("./download-handler.js");
       const { TUI } = await import("./tui.js");
+      const { shouldCheckNow, checkForUpdate, applyUpdate, logUpdateAdvisory } =
+        await import("./updater.js");
 
       const ws = new AgentWebSocket();
       const handler = new DownloadHandler(ws);
       const tui = new TUI(pkg.version);
+
+      // Non-blocking update check on startup
+      let pendingUpdate: Awaited<ReturnType<typeof checkForUpdate>> = null;
+
+      const tryApplyUpdate = async () => {
+        if (!pendingUpdate) return;
+        if (handler.activeCount > 0) return; // defer until idle
+        try {
+          await applyUpdate(pendingUpdate);
+        } catch (err) {
+          console.warn(
+            "Auto-update failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+        pendingUpdate = null;
+      };
+
+      const runUpdateCheck = async () => {
+        try {
+          const result = await checkForUpdate(pkg.version);
+          if (result) {
+            // For npm/Docker installs where binary replacement won't work,
+            // just log an advisory
+            const isBinaryInstall = !process.argv[1]?.includes("node_modules");
+            if (!isBinaryInstall) {
+              logUpdateAdvisory(pkg.version, result.version);
+              return;
+            }
+            pendingUpdate = result;
+            await tryApplyUpdate();
+          }
+        } catch (err) {
+          console.warn(
+            "Update check failed:",
+            err instanceof Error ? err.message : err,
+          );
+        }
+      };
+
+      if (shouldCheckNow("startup")) {
+        runUpdateCheck();
+      }
+
+      // Periodic update check every hour
+      const updateInterval = setInterval(async () => {
+        if (shouldCheckNow("periodic")) {
+          await runUpdateCheck();
+        }
+      }, 60 * 60 * 1000);
 
       ws.setMessageHandler((msg) => {
         const type = msg.type as string;
@@ -57,11 +109,13 @@ async function main() {
       }
 
       process.on("SIGINT", () => {
+        clearInterval(updateInterval);
         tui.stop();
         ws.stop();
         process.exit(0);
       });
       process.on("SIGTERM", () => {
+        clearInterval(updateInterval);
         tui.stop();
         ws.stop();
         process.exit(0);
@@ -152,6 +206,34 @@ async function main() {
       break;
     }
 
+    case "update": {
+      const { checkForUpdate, applyUpdate } = await import("./updater.js");
+      console.log(`Current version: v${pkg.version}`);
+      console.log("Checking for updates...");
+      try {
+        const result = await checkForUpdate(pkg.version);
+        if (!result) {
+          console.log("Already up to date.");
+        } else {
+          console.log(`Update available: v${result.version}`);
+          await applyUpdate(result);
+        }
+      } catch (err) {
+        console.error(
+          "Update failed:",
+          err instanceof Error ? err.message : err,
+        );
+        process.exit(1);
+      }
+      break;
+    }
+
+    case "rollback": {
+      const { rollback } = await import("./updater.js");
+      rollback();
+      break;
+    }
+
     case "version":
     case "--version":
     case "-v":
@@ -177,6 +259,8 @@ async function main() {
       console.log("  logs -f            Follow log output");
       console.log("  install-service    Install as system service");
       console.log("  uninstall-service  Remove system service");
+      console.log("  update             Check for and apply updates");
+      console.log("  rollback           Restore previous binary version");
       console.log("  version            Show version info");
       break;
   }
