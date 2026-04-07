@@ -127,9 +127,9 @@ function handleAgentConnection(
         message.type === "download:failed"
       ) {
         // History recording is best-effort
-        const p = message.payload as Record<string, unknown>;
-        if (p._meta) {
-          const meta = p._meta as Record<string, unknown>;
+        const rawPayload = raw.payload as Record<string, unknown> | undefined;
+        if (rawPayload?._meta) {
+          const meta = rawPayload._meta as Record<string, unknown>;
           recordDownloadHistory(profileId, deviceId, {
             tmdbId: meta.tmdbId as number,
             imdbId: meta.imdbId as string,
@@ -144,21 +144,21 @@ function handleAgentConnection(
             expectedSize: meta.expectedSize as number,
             sizeBytes:
               message.type === "download:completed"
-                ? (p.finalSize as number)
+                ? (rawPayload.finalSize as number)
                 : undefined,
             status:
               message.type === "download:completed" ? "completed" : "failed",
-            error: message.type === "download:failed" ? (p.error as string) : undefined,
+            error: message.type === "download:failed" ? (rawPayload.error as string) : undefined,
             retryable:
               message.type === "download:failed"
-                ? (p.retryable as boolean)
+                ? (rawPayload.retryable as boolean)
                 : undefined,
           }).catch(console.error);
         }
       }
 
       // All other agent events → broadcast to profile's web clients
-      broadcastToClients(profileId, JSON.stringify(message));
+      broadcastToClients(profileId, JSON.stringify(raw));
     } catch (err) {
       console.error("Agent WS message parse error:", err);
     }

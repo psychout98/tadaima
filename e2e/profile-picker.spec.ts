@@ -47,8 +47,19 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     await expect(page.locator(SEL.pinInput)).toBeVisible();
   });
 
-  test("4.4 — correct PIN accepted", async ({ page, workerIndex }) => {
+  test("4.4 — correct PIN accepted", async ({ page, adminLogin, workerIndex }) => {
+    // Ensure the PIN profile exists for this worker
+    const { accessToken } = await adminLogin();
     const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+    await fetch(`${API_URL}/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ name: pinProfileName, pin: "1234" }),
+    }).catch(() => {}); // Ignore if already exists
+
     await page.goto("/profiles");
     const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
@@ -57,8 +68,19 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     await page.waitForURL("/");
   });
 
-  test("4.5 — wrong PIN rejected", async ({ page, workerIndex }) => {
+  test("4.5 — wrong PIN rejected", async ({ page, adminLogin, workerIndex }) => {
+    // Ensure the PIN profile exists for this worker
+    const { accessToken } = await adminLogin();
     const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+    await fetch(`${API_URL}/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ name: pinProfileName, pin: "1234" }),
+    }).catch(() => {}); // Ignore if already exists
+
     await page.goto("/profiles");
     const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();

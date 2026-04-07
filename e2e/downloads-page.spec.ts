@@ -58,7 +58,8 @@ test.describe("TS-12: Downloads Page & History", () => {
 
   test("12.8 — empty state shown when no downloads", async ({ profilePage }) => {
     await profilePage.goto("/downloads");
-    // Either has downloads or shows empty state
+    // Wait for loading to finish
+    await expect(profilePage.getByText("Loading...")).not.toBeVisible({ timeout: 5000 }).catch(() => {});
     const hasEmpty = await profilePage.locator(SEL.downloadsEmpty).isVisible().catch(() => false);
     const hasHistory = await profilePage.locator(SEL.downloadHistory).isVisible().catch(() => false);
     expect(hasEmpty || hasHistory).toBeTruthy();
@@ -76,7 +77,7 @@ test.describe("TS-12: Downloads Page & History", () => {
     await profilePage.goto("/downloads");
     await profilePage.locator('[data-testid="tab-completed"]').click();
     await profilePage.locator('[data-testid="tab-all"]').click();
-    await expect(profilePage.getByText("Downloads")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Downloads" })).toBeVisible();
   });
 
   test("12.11 — retry button on failed downloads", async ({ profilePage }) => {

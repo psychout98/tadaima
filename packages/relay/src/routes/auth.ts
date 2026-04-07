@@ -33,7 +33,7 @@ auth.post("/login", async (c) => {
     .limit(1);
 
   if (!user || !(await compare(password, user.passwordHash))) {
-    return c.json({ error: "INVALID_CREDENTIALS", detail: "Invalid username or password" }, 401);
+    return c.json({ error: "INVALID_CREDENTIALS", detail: "Invalid credentials" }, 401);
   }
 
   const accessToken = await signAdminAccessToken(user.id);

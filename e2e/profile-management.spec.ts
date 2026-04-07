@@ -27,7 +27,7 @@ test.describe("TS-03: Profile Management (Admin)", () => {
     await expect(adminPage.getByText(name)).toBeVisible();
     // Check PIN badge appears
     const row = adminPage.locator(SEL.profileRow).filter({ hasText: name });
-    await expect(row.getByText("PIN")).toBeVisible();
+    await expect(row.getByText("PIN", { exact: true })).toBeVisible();
   });
 
   test("3.4 — duplicate name rejected", async ({ adminPage, adminLogin, workerIndex }) => {
@@ -152,7 +152,7 @@ test.describe("TS-03: Profile Management (Admin)", () => {
 
     // Click delete
     const row = adminPage.locator(SEL.profileRow).filter({ hasText: name });
-    await row.getByText("Delete").click();
+    await row.getByRole("button", { name: "Delete" }).click();
     await expect(adminPage.getByText(name)).not.toBeVisible();
   });
 

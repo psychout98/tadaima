@@ -29,14 +29,14 @@ test.describe("TS-18: Navigation & App Shell", () => {
     await profilePage.goto("/");
     await profilePage.locator(SEL.navDevices).click();
     await profilePage.waitForURL("**/devices");
-    await expect(profilePage.getByText("Devices")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Devices" })).toBeVisible();
   });
 
   test("18.5 — navigate to Settings", async ({ profilePage }) => {
     await profilePage.goto("/");
     await profilePage.locator(SEL.navSettings).click();
     await profilePage.waitForURL("**/settings");
-    await expect(profilePage.getByText("Settings")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
   test("18.6 — active link highlighted", async ({ profilePage }) => {

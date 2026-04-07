@@ -139,6 +139,6 @@ test.describe("TS-20: Error Handling & Edge Cases", () => {
   test("20.12 — app handles page refresh gracefully", async ({ profilePage }) => {
     await profilePage.goto("/settings");
     await profilePage.reload();
-    await expect(profilePage.getByText("Settings")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 });

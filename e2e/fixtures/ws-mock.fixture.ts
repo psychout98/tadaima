@@ -33,7 +33,8 @@ export class MockAgent {
           payload: {
             version: "1.0.0-test",
             platform: "linux",
-            hostname: "test-agent",
+            activeJobs: 0,
+            diskFreeBytes: 100_000_000_000,
           },
         });
         resolve();
@@ -102,6 +103,7 @@ export class MockAgent {
       payload: {
         jobId,
         filePath: filePath ?? "/downloads/test-file.mkv",
+        finalSize: 1_000_000_000,
         _meta: { title: "Test Movie" },
       },
     });
@@ -119,6 +121,7 @@ export class MockAgent {
       payload: {
         jobId,
         error,
+        phase: "downloading",
         retryable,
         _meta: { title: "Test Movie" },
       },
@@ -131,9 +134,9 @@ export class MockAgent {
       type: "agent:heartbeat",
       timestamp: Date.now(),
       payload: {
-        uptime: 3600,
+        activeJobs: 0,
         diskFreeBytes: 100_000_000_000,
-        activeDownloads: 0,
+        uptimeSeconds: 3600,
       },
     });
   }

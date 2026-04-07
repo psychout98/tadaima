@@ -59,7 +59,7 @@ test.describe("TS-08: Search & Browse", () => {
     await profilePage.locator(SEL.searchBar).fill("Inception");
     await profilePage.locator(SEL.searchBtn).click();
     await profilePage.locator(SEL.resultCard).first().click();
-    await expect(profilePage.getByText("Inception")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Inception" })).toBeVisible();
     await expect(profilePage.getByText("2010")).toBeVisible();
     await expect(profilePage.getByText("Movie")).toBeVisible();
   });
@@ -71,7 +71,8 @@ test.describe("TS-08: Search & Browse", () => {
     await profilePage.locator(SEL.searchBtn).click();
     await profilePage.locator(SEL.resultCard).first().click();
     // Season selector should be visible for TV
-    await expect(profilePage.getByText("Season 1")).toBeVisible({ timeout: 5000 });
+    const seasonSelect = profilePage.locator("select").first();
+    await expect(seasonSelect).toHaveValue("1", { timeout: 5000 });
   });
 
   test("8.9 — media type badge displayed", async ({ profilePage }) => {

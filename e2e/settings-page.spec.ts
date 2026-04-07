@@ -4,7 +4,7 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-15: Settings Page", () => {
   test("15.1 — settings page loads", async ({ profilePage }) => {
     await profilePage.goto("/settings");
-    await expect(profilePage.getByText("Settings")).toBeVisible();
+    await expect(profilePage.getByRole("heading", { name: "Settings" })).toBeVisible();
   });
 
   test("15.2 — change profile PIN", async ({ profilePage }) => {

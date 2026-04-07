@@ -33,7 +33,7 @@ test.describe("TS-09: Stream Selection", () => {
     const rows = profilePage.locator(SEL.streamRow);
     const count = await rows.count();
     for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i).getByText("1080p")).toBeVisible();
+      await expect(rows.nth(i).getByText("1080p", { exact: true })).toBeVisible();
     }
   });
 
@@ -44,7 +44,7 @@ test.describe("TS-09: Stream Selection", () => {
     const rows = profilePage.locator(SEL.streamRow);
     const count = await rows.count();
     for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i).getByText("HDR")).toBeVisible();
+      await expect(rows.nth(i).getByText("HDR", { exact: true })).toBeVisible();
     }
   });
 
@@ -69,8 +69,8 @@ test.describe("TS-09: Stream Selection", () => {
     const count = await rows.count();
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i++) {
-      await expect(rows.nth(i).getByText("2160p")).toBeVisible();
-      await expect(rows.nth(i).getByText("HDR")).toBeVisible();
+      await expect(rows.nth(i).getByText("2160p", { exact: true })).toBeVisible();
+      await expect(rows.nth(i).getByText("HDR", { exact: true })).toBeVisible();
     }
   });
 
@@ -92,7 +92,8 @@ test.describe("TS-09: Stream Selection", () => {
     await profilePage.locator(SEL.searchBar).fill("Game of Thrones");
     await profilePage.locator(SEL.searchBtn).click();
     await profilePage.locator(SEL.resultCard).first().click();
-    await expect(profilePage.getByText("Season 1")).toBeVisible({ timeout: 5000 });
+    const seasonSelect = profilePage.locator("select").first();
+    await expect(seasonSelect).toHaveValue("1", { timeout: 5000 });
     await expect(profilePage.getByText("Episode 1")).toBeVisible();
   });
 

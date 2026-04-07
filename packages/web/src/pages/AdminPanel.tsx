@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router";
 import { api } from "../lib/api";
 import { useAuthStore } from "../lib/store";
@@ -43,7 +43,9 @@ export function AdminPanel() {
 
   useEffect(() => {
     if (!adminToken) {
-      navigate("/admin/login");
+      if (!loggingOut.current) {
+        navigate("/admin/login");
+      }
       return;
     }
     loadData();
@@ -106,7 +108,10 @@ export function AdminPanel() {
     }
   }
 
+  const loggingOut = useRef(false);
+
   function handleLogout() {
+    loggingOut.current = true;
     clearAdminAuth();
     navigate("/profiles");
   }

@@ -107,6 +107,22 @@ export async function pairWorkerDevice(
   label: string,
 ): Promise<{ deviceToken: string; deviceName: string }> {
   const deviceName = uniqueDeviceName(workerIndex, label);
+
+  // Clean up existing test devices to avoid 400 errors from duplicates or device limit
+  const devicesRes = await fetch(`${API_URL}/devices`, {
+    headers: { Authorization: `Bearer ${profileToken}` },
+  });
+  if (devicesRes.ok) {
+    const existingDevices: Array<{ id: string; name: string }> = await devicesRes.json();
+    const testDevices = existingDevices.filter((d) => d.name.includes(`${label}-w${workerIndex}`));
+    for (const d of testDevices) {
+      await fetch(`${API_URL}/devices/${d.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${profileToken}` },
+      });
+    }
+  }
+
   const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
     method: "POST",
     headers: { Authorization: `Bearer ${profileToken}` },

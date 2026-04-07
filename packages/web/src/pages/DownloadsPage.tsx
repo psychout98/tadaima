@@ -155,6 +155,7 @@ export function DownloadsPage() {
             key={t.key}
             onClick={() => setTab(t.key)}
             data-testid={`tab-${t.key}`}
+            data-state={tab === t.key ? "active" : "inactive"}
             className={`rounded-md px-4 py-2 text-sm font-medium transition ${
               tab === t.key
                 ? "bg-zinc-700 text-white"

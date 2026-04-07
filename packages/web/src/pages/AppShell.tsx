@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link, Outlet, useNavigate, useLocation } from "react-router";
+import { Link, Outlet, useNavigate, useLocation, Navigate } from "react-router";
 import { useAuthStore } from "../lib/store";
 import { wsClient } from "../lib/ws-client";
 import { Toasts } from "../components/Toasts";
@@ -73,11 +73,12 @@ export function AppShell() {
           progress: 0,
         });
       } else if (message.type === "download:progress") {
+        const existing = useAuthStore.getState().activeDownloads.get(message.payload.jobId);
         setActiveDownload({
           jobId: message.payload.jobId,
-          requestId: "",
-          title: "",
-          mediaType: "",
+          requestId: existing?.requestId ?? "",
+          title: existing?.title ?? "",
+          mediaType: existing?.mediaType ?? "",
           phase: message.payload.phase,
           progress: message.payload.progress,
           downloadedBytes: message.payload.downloadedBytes,
@@ -137,8 +138,7 @@ export function AppShell() {
   ]);
 
   if (!profile) {
-    navigate("/profiles");
-    return null;
+    return <Navigate to="/profiles" replace />;
   }
 
   function handleSwitchProfile() {
