@@ -10,28 +10,30 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     expect(await cards.count()).toBeGreaterThan(0);
   });
 
-  test("4.2 — select profile without PIN navigates to app", async ({ page }) => {
+  test("4.2 — select profile without PIN navigates to app", async ({ page, adminLogin, workerIndex }) => {
+    // Create a guaranteed non-PIN profile for this worker
+    const { accessToken } = await adminLogin();
+    const noPinName = uniqueDeviceName(workerIndex, "NoPinSelect");
+    await fetch(`${API_URL}/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ name: noPinName }),
+    }).catch(() => {}); // Ignore if already exists
+
     await page.goto("/profiles");
-    // Find a profile without PIN badge
-    const cards = page.locator(SEL.profileCard);
-    const count = await cards.count();
-    for (let i = 0; i < count; i++) {
-      const card = cards.nth(i);
-      const hasPin = await card.getByText("PIN").isVisible().catch(() => false);
-      if (!hasPin) {
-        await card.click();
-        await page.waitForURL("/");
-        return;
-      }
-    }
-    // If all have PINs, skip
-    test.skip();
+    const card = page.locator(SEL.profileCard).filter({ hasText: noPinName });
+    await expect(card).toBeVisible();
+    await card.click();
+    await page.waitForURL("/");
   });
 
   test("4.3 — select PIN-protected profile shows PIN input", async ({ page, adminLogin, workerIndex }) => {
     // Create a profile with PIN (unique to worker)
     const { accessToken } = await adminLogin();
-    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinPick3");
     await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
@@ -39,7 +41,7 @@ test.describe("TS-04: Profile Picker & Selection", () => {
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ name: pinProfileName, pin: "1234" }),
-    });
+    }).catch(() => {}); // Ignore if already exists
 
     await page.goto("/profiles");
     const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
@@ -48,9 +50,9 @@ test.describe("TS-04: Profile Picker & Selection", () => {
   });
 
   test("4.4 — correct PIN accepted", async ({ page, adminLogin, workerIndex }) => {
-    // Ensure the PIN profile exists for this worker
+    // Create a PIN profile specifically for this test
     const { accessToken } = await adminLogin();
-    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinPick4");
     await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
@@ -69,9 +71,9 @@ test.describe("TS-04: Profile Picker & Selection", () => {
   });
 
   test("4.5 — wrong PIN rejected", async ({ page, adminLogin, workerIndex }) => {
-    // Ensure the PIN profile exists for this worker
+    // Create a PIN profile specifically for this test
     const { accessToken } = await adminLogin();
-    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinPick5");
     await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
@@ -89,11 +91,23 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     await expect(page.locator(SEL.pinError)).toBeVisible();
   });
 
-  test("4.6 — PIN input accepts only digits", async ({ page, workerIndex }) => {
-    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
+  test("4.6 — PIN input accepts only digits", async ({ page, adminLogin, workerIndex }) => {
+    // Create a PIN profile specifically for this test
+    const { accessToken } = await adminLogin();
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinPick6");
+    await fetch(`${API_URL}/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ name: pinProfileName, pin: "1234" }),
+    }).catch(() => {}); // Ignore if already exists
+
     await page.goto("/profiles");
     const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
+    await expect(page.locator(SEL.pinInput)).toBeVisible();
     await page.locator(SEL.pinInput).fill("abcd");
     await expect(page.locator(SEL.pinInput)).toHaveValue("");
   });
@@ -110,25 +124,29 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     await expect(page.getByText("Manage")).toBeVisible();
   });
 
-  test("4.8 — profile session token stored after selection", async ({ page }) => {
+  test("4.8 — profile session token stored after selection", async ({ page, adminLogin, workerIndex }) => {
+    // Create a guaranteed non-PIN profile for this worker
+    const { accessToken } = await adminLogin();
+    const noPinName = uniqueDeviceName(workerIndex, "NoPinStore");
+    await fetch(`${API_URL}/profiles`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({ name: noPinName }),
+    }).catch(() => {}); // Ignore if already exists
+
     await page.goto("/profiles");
-    // Select a non-PIN profile
-    const cards = page.locator(SEL.profileCard);
-    const count = await cards.count();
-    for (let i = 0; i < count; i++) {
-      const card = cards.nth(i);
-      const hasPin = await card.getByText("PIN").isVisible().catch(() => false);
-      if (!hasPin) {
-        await card.click();
-        await page.waitForURL("/");
-        const store = await page.evaluate(() => {
-          return JSON.parse(localStorage.getItem("auth-store") ?? "{}");
-        });
-        expect(store.state?.profileToken).toBeTruthy();
-        expect(store.state?.profile?.id).toBeTruthy();
-        return;
-      }
-    }
+    const card = page.locator(SEL.profileCard).filter({ hasText: noPinName });
+    await expect(card).toBeVisible();
+    await card.click();
+    await page.waitForURL("/");
+    const store = await page.evaluate(() => {
+      return JSON.parse(localStorage.getItem("auth-store") ?? "{}");
+    });
+    expect(store.state?.profileToken).toBeTruthy();
+    expect(store.state?.profile?.id).toBeTruthy();
   });
 
   test("4.9 — switch profile returns to picker", async ({ profilePage }) => {
