@@ -107,15 +107,18 @@ export const test = base.extend<AuthFixtures>({
 
     await use(page);
 
-    // Cleanup: remove profiles created during this test (keep worker profiles + default)
+    // Cleanup: only remove profiles created by THIS worker during this test
+    // Keep: setup default (index 0), all worker profiles (TestUser-wN), and
+    // any profiles created by other workers (name contains "-w" + digit)
     const wIdx = testInfo.workerIndex;
-    const keepName = workerProfileName(wIdx);
+    const workerSuffix = `-w${wIdx}`;
     try {
       const profilesRes = await fetch(`${API_URL}/profiles`);
       const profiles: Array<{ id: string; name: string }> = await profilesRes.json();
-      // Keep the first profile (setup default) and any worker-scoped profiles
       for (const p of profiles.slice(1)) {
         if (p.name.startsWith("TestUser-w")) continue; // keep all worker profiles
+        // Only delete if it belongs to THIS worker (has our worker suffix)
+        if (!p.name.endsWith(workerSuffix)) continue;
         await fetch(`${API_URL}/profiles/${p.id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${accessToken}` },

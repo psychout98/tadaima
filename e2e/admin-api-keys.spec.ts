@@ -3,6 +3,9 @@ import { API_URL, TEST_ADMIN } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-16: Admin Panel — API Keys", () => {
+  // Admin settings are global (not per-profile), so these tests must run serially
+  // to avoid workers overwriting each other's settings
+  test.describe.configure({ mode: "serial" });
   test("16.1 — view current API keys in admin panel", async ({ adminPage }) => {
     await expect(adminPage.getByText("Instance Settings")).toBeVisible();
     await expect(adminPage.getByText("Real-Debrid API Key")).toBeVisible();

@@ -5,10 +5,12 @@ import { SEL } from "./helpers/selectors";
 
 test.describe("TS-13: Real-Time Progress UI", () => {
   let deviceToken: string;
+  let wIdx: number;
 
   test.beforeEach(async ({}, testInfo) => {
-    const { profileToken } = await ensureWorkerProfile(testInfo.workerIndex);
-    const { deviceToken: dt } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "Progress-Dev");
+    wIdx = testInfo.workerIndex;
+    const { profileToken } = await ensureWorkerProfile(wIdx);
+    const { deviceToken: dt } = await pairWorkerDevice(profileToken, wIdx, "Progress-Dev");
     deviceToken = dt;
   });
 
@@ -26,22 +28,22 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       id: `a-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "progress-live", requestId: "progress-live", title: "LiveProgress" },
+      payload: { jobId: `progress-live-w${wIdx}`, requestId: `progress-live-w${wIdx}`, title: "LiveProgress" },
     });
 
     await new Promise((r) => setTimeout(r, 500));
 
     // Send progress updates
-    await agent.sendProgress("progress-live", 25, 5_000_000);
+    await agent.sendProgress(`progress-live-w${wIdx}`, 25, 5_000_000);
     await new Promise((r) => setTimeout(r, 300));
-    await agent.sendProgress("progress-live", 50, 10_000_000);
+    await agent.sendProgress(`progress-live-w${wIdx}`, 50, 10_000_000);
 
     // Check for progress display
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "LiveProgress" });
     await expect(card).toBeVisible({ timeout: 3000 });
     await expect(card.getByText(/\d+%/)).toBeVisible();
 
-    await agent.completeDownload("progress-live");
+    await agent.completeDownload(`progress-live-w${wIdx}`);
     await agent.disconnect();
   });
 
@@ -58,16 +60,16 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       id: `a-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "speed-test", requestId: "speed-test", title: "SpeedTest" },
+      payload: { jobId: `speed-test-w${wIdx}`, requestId: `speed-test-w${wIdx}`, title: "SpeedTest" },
     });
     await new Promise((r) => setTimeout(r, 300));
-    await agent.sendProgress("speed-test", 30, 15_000_000);
+    await agent.sendProgress(`speed-test-w${wIdx}`, 30, 15_000_000);
 
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "SpeedTest" });
     await expect(card).toBeVisible({ timeout: 3000 });
     await expect(card.getByText(/MB\/s/)).toBeVisible({ timeout: 3000 });
 
-    await agent.completeDownload("speed-test");
+    await agent.completeDownload(`speed-test-w${wIdx}`);
     await agent.disconnect();
   });
 
@@ -84,14 +86,14 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       id: `a-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "phase-test", requestId: "phase-test", title: "PhaseTest" },
+      payload: { jobId: `phase-test-w${wIdx}`, requestId: `phase-test-w${wIdx}`, title: "PhaseTest" },
     });
     await new Promise((r) => setTimeout(r, 300));
-    await agent.sendProgress("phase-test", 10, 5_000_000, "adding");
+    await agent.sendProgress(`phase-test-w${wIdx}`, 10, 5_000_000, "adding");
     await new Promise((r) => setTimeout(r, 300));
-    await agent.sendProgress("phase-test", 50, 10_000_000, "downloading");
+    await agent.sendProgress(`phase-test-w${wIdx}`, 50, 10_000_000, "downloading");
 
-    await agent.completeDownload("phase-test");
+    await agent.completeDownload(`phase-test-w${wIdx}`);
     await agent.disconnect();
   });
 
@@ -104,7 +106,7 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await agent.completeDownload("toast-complete");
+    await agent.completeDownload(`toast-complete-w${wIdx}`);
 
     await expect(
       profilePage.locator(SEL.toast).filter({ hasText: /arrived|complete/i }),
@@ -122,7 +124,7 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await agent.failDownload("toast-fail", "Network error");
+    await agent.failDownload(`toast-fail-w${wIdx}`, "Network error");
 
     await expect(
       profilePage.locator(SEL.toast).filter({ hasText: /failed/i }),
@@ -146,14 +148,14 @@ test.describe("TS-13: Real-Time Progress UI", () => {
         id: `a-${Date.now()}-${name}`,
         type: "download:accepted",
         timestamp: Date.now(),
-        payload: { jobId: `multi-${name}`, requestId: `multi-${name}`, title: name },
+        payload: { jobId: `multi-${name}-w${wIdx}`, requestId: `multi-${name}-w${wIdx}`, title: name },
       });
       await new Promise((r) => setTimeout(r, 200));
     }
 
     // Cleanup
     for (const name of ["DL-A", "DL-B"]) {
-      await agent.completeDownload(`multi-${name}`);
+      await agent.completeDownload(`multi-${name}-w${wIdx}`);
     }
     await agent.disconnect();
   });
@@ -171,7 +173,7 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       id: `a-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "nav-test", requestId: "nav-test", title: "NavTest" },
+      payload: { jobId: `nav-test-w${wIdx}`, requestId: `nav-test-w${wIdx}`, title: "NavTest" },
     });
     await new Promise((r) => setTimeout(r, 300));
 
@@ -183,7 +185,7 @@ test.describe("TS-13: Real-Time Progress UI", () => {
     await profilePage.locator(SEL.navDownloads).click();
     await profilePage.waitForURL("**/downloads");
 
-    await agent.completeDownload("nav-test");
+    await agent.completeDownload(`nav-test-w${wIdx}`);
     await agent.disconnect();
   });
 
@@ -200,16 +202,16 @@ test.describe("TS-13: Real-Time Progress UI", () => {
       id: `a-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "eta-test", requestId: "eta-test", title: "ETATest" },
+      payload: { jobId: `eta-test-w${wIdx}`, requestId: `eta-test-w${wIdx}`, title: "ETATest" },
     });
     await new Promise((r) => setTimeout(r, 300));
-    await agent.sendProgress("eta-test", 40, 10_000_000);
+    await agent.sendProgress(`eta-test-w${wIdx}`, 40, 10_000_000);
 
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "ETATest" });
     await expect(card).toBeVisible({ timeout: 3000 });
     await expect(card.getByText(/ETA \d/)).toBeVisible({ timeout: 3000 });
 
-    await agent.completeDownload("eta-test");
+    await agent.completeDownload(`eta-test-w${wIdx}`);
     await agent.disconnect();
   });
 

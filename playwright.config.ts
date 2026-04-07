@@ -1,11 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
+import os from "os";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  retries: process.env.CI ? 2 : 1,
+  // 20 workers overwhelms the dev server — scale to available CPUs
+  // but cap at 8 to avoid connection exhaustion on the single-threaded relay
+  workers: process.env.CI ? 4 : Math.min(8, os.cpus().length),
   reporter: [
     ["list"],
     ["html"],

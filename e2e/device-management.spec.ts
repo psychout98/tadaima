@@ -13,23 +13,38 @@ test.describe("TS-06: Device Management", () => {
 
   test("6.2 — rename device via API", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
+    // Create a device specifically for this test to avoid index-based access
+    const origName = uniqueDeviceName(workerIndex, "RenameTarget");
+    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const { code } = await codeRes.json();
+    await fetch(`${API_URL}/devices/pair/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name: origName, platform: "linux" }),
+    });
+    // Find the device we just created
     const devicesRes = await fetch(`${API_URL}/devices`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const devices = await devicesRes.json();
-    if (devices.length === 0) return;
+    const target = devices.find((d: { name: string }) => d.name === origName);
+    if (!target) return;
 
-    const res = await fetch(`${API_URL}/devices/${devices[0].id}`, {
+    const newName = uniqueDeviceName(workerIndex, "Renamed");
+    const res = await fetch(`${API_URL}/devices/${target.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name: uniqueDeviceName(workerIndex, "Renamed") }),
+      body: JSON.stringify({ name: newName }),
     });
     expect(res.ok).toBeTruthy();
     const updated = await res.json();
-    expect(updated.name).toBe(uniqueDeviceName(workerIndex, "Renamed"));
+    expect(updated.name).toBe(newName);
   });
 
   test("6.3 — remove device via API", async ({ profileSelect, workerIndex }) => {
@@ -85,15 +100,28 @@ test.describe("TS-06: Device Management", () => {
     }
   });
 
-  test("6.7 — set default device via API", async ({ profileSelect }) => {
+  test("6.7 — set default device via API", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
+    // Create a device specifically for this test
+    const devName = uniqueDeviceName(workerIndex, "DefaultTarget");
+    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const { code } = await codeRes.json();
+    await fetch(`${API_URL}/devices/pair/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, name: devName, platform: "linux" }),
+    });
     const devicesRes = await fetch(`${API_URL}/devices`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const devices = await devicesRes.json();
-    if (devices.length === 0) return;
+    const target = devices.find((d: { name: string }) => d.name === devName);
+    if (!target) return;
 
-    const res = await fetch(`${API_URL}/devices/${devices[0].id}`, {
+    const res = await fetch(`${API_URL}/devices/${target.id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

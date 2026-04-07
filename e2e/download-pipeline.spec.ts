@@ -6,11 +6,13 @@ import { SEL } from "./helpers/selectors";
 test.describe("TS-10: Download Pipeline", () => {
   let deviceToken: string;
   let profileToken: string;
+  let wIdx: number;
 
   test.beforeEach(async ({}, testInfo) => {
-    const result = await ensureWorkerProfile(testInfo.workerIndex);
+    wIdx = testInfo.workerIndex;
+    const result = await ensureWorkerProfile(wIdx);
     profileToken = result.profileToken;
-    const { deviceToken: dt } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "DL-Dev");
+    const { deviceToken: dt } = await pairWorkerDevice(profileToken, wIdx, "DL-Dev");
     deviceToken = dt;
   });
 
@@ -81,7 +83,7 @@ test.describe("TS-10: Download Pipeline", () => {
     ).toBeVisible({ timeout: 10_000 });
 
     // Agent sends a failure
-    await agent.failDownload("test-fail-job", "Disk full", true);
+    await agent.failDownload(`test-fail-job-w${wIdx}`, "Disk full", true);
 
     // Should show error toast
     await expect(
@@ -105,7 +107,7 @@ test.describe("TS-10: Download Pipeline", () => {
       id: `accept-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "cancel-test", requestId: "cancel-test", title: "CancelMe" },
+      payload: { jobId: `cancel-test-w${wIdx}`, requestId: `cancel-test-w${wIdx}`, title: "CancelMe" },
     });
 
     // Navigate to downloads to see it
@@ -155,11 +157,11 @@ test.describe("TS-10: Download Pipeline", () => {
       id: `accept-${Date.now()}`,
       type: "download:accepted",
       timestamp: Date.now(),
-      payload: { jobId: "progress-test", requestId: "progress-test", title: "ProgressMovie" },
+      payload: { jobId: `progress-test-w${wIdx}`, requestId: `progress-test-w${wIdx}`, title: "ProgressMovie" },
     });
 
     await new Promise((r) => setTimeout(r, 500));
-    await agent.sendProgress("progress-test", 50, 10_000_000, "downloading");
+    await agent.sendProgress(`progress-test-w${wIdx}`, 50, 10_000_000, "downloading");
 
     // Check for active download card
     await expect(
@@ -167,7 +169,7 @@ test.describe("TS-10: Download Pipeline", () => {
     ).toBeVisible({ timeout: 5_000 });
 
     // Complete it
-    await agent.completeDownload("progress-test");
+    await agent.completeDownload(`progress-test-w${wIdx}`);
     await agent.disconnect();
   });
 
@@ -197,7 +199,7 @@ test.describe("TS-10: Download Pipeline", () => {
       profilePage.locator(SEL.connectionStatus).filter({ hasText: /Connected/i }),
     ).toBeVisible({ timeout: 10_000 });
 
-    await agent.failDownload("retry-job", "Temporary error", true);
+    await agent.failDownload(`retry-job-w${wIdx}`, "Temporary error", true);
 
     await expect(
       profilePage.locator(SEL.toast).filter({ hasText: /failed/i }),
@@ -221,14 +223,14 @@ test.describe("TS-10: Download Pipeline", () => {
         id: `accept-${Date.now()}-${name}`,
         type: "download:accepted",
         timestamp: Date.now(),
-        payload: { jobId: `concurrent-${name}`, requestId: `concurrent-${name}`, title: name },
+        payload: { jobId: `concurrent-${name}-w${wIdx}`, requestId: `concurrent-${name}-w${wIdx}`, title: name },
       });
       await new Promise((r) => setTimeout(r, 200));
     }
 
     // Clean up
     for (const name of ["Movie1", "Movie2"]) {
-      await agent.completeDownload(`concurrent-${name}`);
+      await agent.completeDownload(`concurrent-${name}-w${wIdx}`);
     }
 
     await agent.disconnect();
