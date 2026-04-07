@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/auth.fixture";
 import { API_URL } from "./helpers/constants";
+import { uniqueDeviceName } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-05: Device Pairing", () => {
@@ -22,7 +23,7 @@ test.describe("TS-05: Device Pairing", () => {
     expect(body.expiresAt).toBeTruthy();
   });
 
-  test("5.4 — claim pairing code via API", async ({ profileSelect }) => {
+  test("5.4 — claim pairing code via API", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     // Generate code
     const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
@@ -37,7 +38,7 @@ test.describe("TS-05: Device Pairing", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code,
-        deviceName: "Test Device",
+        name: uniqueDeviceName(workerIndex, "Test-Device"),
         platform: "linux",
       }),
     });
@@ -52,14 +53,14 @@ test.describe("TS-05: Device Pairing", () => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         code: "ZZZZZZ",
-        deviceName: "Test",
+        name: "Test",
         platform: "linux",
       }),
     });
     expect(claimRes.ok).toBeFalsy();
   });
 
-  test("5.6 — claim already-used code rejected", async ({ profileSelect }) => {
+  test("5.6 — claim already-used code rejected", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
       method: "POST",
@@ -71,20 +72,21 @@ test.describe("TS-05: Device Pairing", () => {
     await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "D1", platform: "linux" }),
+      body: JSON.stringify({ code, name: uniqueDeviceName(workerIndex, "D1"), platform: "linux" }),
     });
 
     // Claim again
     const res2 = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "D2", platform: "linux" }),
+      body: JSON.stringify({ code, name: uniqueDeviceName(workerIndex, "D2"), platform: "linux" }),
     });
     expect(res2.ok).toBeFalsy();
   });
 
-  test("5.7 — device appears after pairing", async ({ profilePage, profileSelect }) => {
+  test("5.7 — device appears after pairing", async ({ profilePage, profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
+    const devName = uniqueDeviceName(workerIndex, "MyDevice");
     // Pair a device via API
     const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
       method: "POST",
@@ -94,14 +96,14 @@ test.describe("TS-05: Device Pairing", () => {
     await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "MyDevice", platform: "macos" }),
+      body: JSON.stringify({ code, name: devName, platform: "macos" }),
     });
 
     await profilePage.goto("/devices");
-    await expect(profilePage.getByText("MyDevice")).toBeVisible();
+    await expect(profilePage.getByText(devName)).toBeVisible();
   });
 
-  test("5.8 — only one active code per profile", async ({ profileSelect }) => {
+  test("5.8 — only one active code per profile", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     const res1 = await fetch(`${API_URL}/devices/pair/request`, {
       method: "POST",
@@ -119,7 +121,7 @@ test.describe("TS-05: Device Pairing", () => {
     const claim1 = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code1, deviceName: "D", platform: "linux" }),
+      body: JSON.stringify({ code: code1, name: uniqueDeviceName(workerIndex, "D-old"), platform: "linux" }),
     });
     expect(claim1.ok).toBeFalsy();
 
@@ -127,12 +129,12 @@ test.describe("TS-05: Device Pairing", () => {
     const claim2 = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code2, deviceName: "D", platform: "linux" }),
+      body: JSON.stringify({ code: code2, name: uniqueDeviceName(workerIndex, "D-new"), platform: "linux" }),
     });
     expect(claim2.ok).toBeTruthy();
   });
 
-  test("5.9 — agent config endpoint returns data", async ({ profileSelect }) => {
+  test("5.9 — agent config endpoint returns data", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     // Pair a device
     const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
@@ -143,7 +145,7 @@ test.describe("TS-05: Device Pairing", () => {
     const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "ConfigTest", platform: "linux" }),
+      body: JSON.stringify({ code, name: uniqueDeviceName(workerIndex, "ConfigTest"), platform: "linux" }),
     });
     const { deviceToken } = await claimRes.json();
 

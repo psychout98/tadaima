@@ -1,22 +1,34 @@
 import { test as base, type Page, type BrowserContext } from "@playwright/test";
-import { TEST_ADMIN, TEST_PROFILE, API_URL } from "../helpers/constants";
+import {
+  TEST_ADMIN,
+  TEST_PROFILE,
+  API_URL,
+  ensureWorkerProfile,
+  workerProfileName,
+} from "../helpers/constants";
 
 type AuthFixtures = {
   /** Ensures setup wizard has been completed (runs once, cached) */
   setupComplete: void;
   /** A fresh page logged in as admin */
   adminPage: Page;
-  /** A fresh page with a profile selected */
+  /** A fresh page with a profile selected (worker-scoped) */
   profilePage: Page;
   /** Helper to complete setup via API */
   apiSetup: () => Promise<void>;
   /** Helper to login as admin and get token */
   adminLogin: () => Promise<{ accessToken: string; refreshToken: string }>;
-  /** Helper to select a profile and get token */
+  /** Helper to select the worker-scoped profile and get token */
   profileSelect: (profileId?: string) => Promise<{ token: string; profile: { id: string; name: string } }>;
+  /** The current worker index — use for unique naming */
+  workerIndex: number;
 };
 
 export const test = base.extend<AuthFixtures>({
+  workerIndex: async ({}, use, testInfo) => {
+    await use(testInfo.workerIndex);
+  },
+
   apiSetup: async ({}, use) => {
     const fn = async () => {
       const statusRes = await fetch(`${API_URL}/setup/status`);
@@ -62,7 +74,7 @@ export const test = base.extend<AuthFixtures>({
     await use(fn);
   },
 
-  adminPage: async ({ browser, setupComplete: _ }, use) => {
+  adminPage: async ({ browser, setupComplete: _ }, use, testInfo) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
@@ -95,12 +107,15 @@ export const test = base.extend<AuthFixtures>({
 
     await use(page);
 
-    // Cleanup: remove any test data created during admin session
+    // Cleanup: remove profiles created during this test (keep worker profiles + default)
+    const wIdx = testInfo.workerIndex;
+    const keepName = workerProfileName(wIdx);
     try {
       const profilesRes = await fetch(`${API_URL}/profiles`);
-      const profiles = await profilesRes.json();
-      // Delete any profiles beyond the first one (the default test profile)
+      const profiles: Array<{ id: string; name: string }> = await profilesRes.json();
+      // Keep the first profile (setup default) and any worker-scoped profiles
       for (const p of profiles.slice(1)) {
+        if (p.name.startsWith("TestUser-w")) continue; // keep all worker profiles
         await fetch(`${API_URL}/profiles/${p.id}`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${accessToken}` },
@@ -113,24 +128,14 @@ export const test = base.extend<AuthFixtures>({
     await ctx.close();
   },
 
-  profilePage: async ({ browser, setupComplete: _ }, use) => {
+  profilePage: async ({ browser, setupComplete: _ }, use, testInfo) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
-    // Get profiles
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    const profile = profiles[0];
+    const { profileId, profileToken, adminToken } =
+      await ensureWorkerProfile(testInfo.workerIndex);
 
-    // Select profile via API
-    const selectRes = await fetch(`${API_URL}/profiles/${profile.id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token } = await selectRes.json();
-
-    // Also login as admin for admin features
+    // Also get admin refresh token
     const adminRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -139,7 +144,13 @@ export const test = base.extend<AuthFixtures>({
         password: TEST_ADMIN.password,
       }),
     });
-    const { accessToken: adminToken, refreshToken: adminRefreshToken } = await adminRes.json();
+    const { accessToken: adminAccessToken, refreshToken: adminRefreshToken } = await adminRes.json();
+
+    // Get full profile info
+    const profilesRes = await fetch(`${API_URL}/profiles`);
+    const profiles: Array<{ id: string; name: string; avatar: string; hasPin: boolean }> =
+      await profilesRes.json();
+    const profile = profiles.find((p) => p.id === profileId)!;
 
     await page.goto("/");
     await page.evaluate(
@@ -159,7 +170,7 @@ export const test = base.extend<AuthFixtures>({
         };
         localStorage.setItem("auth-store", JSON.stringify(store));
       },
-      { token, profile, adminToken, adminRefreshToken },
+      { token: profileToken, profile, adminToken: adminAccessToken, adminRefreshToken },
     );
     await page.reload();
 
@@ -167,7 +178,7 @@ export const test = base.extend<AuthFixtures>({
     let beforeDeviceIds = new Set<string>();
     try {
       const devicesRes = await fetch(`${API_URL}/devices`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: { Authorization: `Bearer ${adminAccessToken}` },
       });
       if (devicesRes.ok) {
         const devices = await devicesRes.json();
@@ -182,7 +193,7 @@ export const test = base.extend<AuthFixtures>({
     // Cleanup: only delete devices created during this test
     try {
       const devicesRes = await fetch(`${API_URL}/devices`, {
-        headers: { Authorization: `Bearer ${adminToken}` },
+        headers: { Authorization: `Bearer ${adminAccessToken}` },
       });
       if (devicesRes.ok) {
         const devices = await devicesRes.json();
@@ -190,7 +201,7 @@ export const test = base.extend<AuthFixtures>({
           if (!beforeDeviceIds.has(d.id)) {
             await fetch(`${API_URL}/devices/${d.id}`, {
               method: "DELETE",
-              headers: { Authorization: `Bearer ${adminToken}` },
+              headers: { Authorization: `Bearer ${adminAccessToken}` },
             });
           }
         }
@@ -202,13 +213,12 @@ export const test = base.extend<AuthFixtures>({
     await ctx.close();
   },
 
-  profileSelect: async ({}, use) => {
+  profileSelect: async ({ setupComplete: _ }, use, testInfo) => {
     const fn = async (profileId?: string) => {
       let id = profileId;
       if (!id) {
-        const profilesRes = await fetch(`${API_URL}/profiles`);
-        const profiles = await profilesRes.json();
-        id = profiles[0].id;
+        const { profileId: wId } = await ensureWorkerProfile(testInfo.workerIndex);
+        id = wId;
       }
       const res = await fetch(`${API_URL}/profiles/${id}/select`, {
         method: "POST",

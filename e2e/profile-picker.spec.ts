@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { TEST_ADMIN, API_URL } from "./helpers/constants";
+import { TEST_ADMIN, API_URL, uniqueDeviceName } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-04: Profile Picker & Selection", () => {
@@ -28,45 +28,49 @@ test.describe("TS-04: Profile Picker & Selection", () => {
     test.skip();
   });
 
-  test("4.3 — select PIN-protected profile shows PIN input", async ({ page, adminLogin }) => {
-    // Create a profile with PIN
+  test("4.3 — select PIN-protected profile shows PIN input", async ({ page, adminLogin, workerIndex }) => {
+    // Create a profile with PIN (unique to worker)
     const { accessToken } = await adminLogin();
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
     await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ name: "PinTest", pin: "1234" }),
+      body: JSON.stringify({ name: pinProfileName, pin: "1234" }),
     });
 
     await page.goto("/profiles");
-    const card = page.locator(SEL.profileCard).filter({ hasText: "PinTest" });
+    const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
     await expect(page.locator(SEL.pinInput)).toBeVisible();
   });
 
-  test("4.4 — correct PIN accepted", async ({ page }) => {
+  test("4.4 — correct PIN accepted", async ({ page, workerIndex }) => {
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
     await page.goto("/profiles");
-    const card = page.locator(SEL.profileCard).filter({ hasText: "PinTest" });
+    const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
     await page.locator(SEL.pinInput).fill("1234");
     await page.getByRole("button", { name: "Enter" }).click();
     await page.waitForURL("/");
   });
 
-  test("4.5 — wrong PIN rejected", async ({ page }) => {
+  test("4.5 — wrong PIN rejected", async ({ page, workerIndex }) => {
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
     await page.goto("/profiles");
-    const card = page.locator(SEL.profileCard).filter({ hasText: "PinTest" });
+    const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
     await page.locator(SEL.pinInput).fill("0000");
     await page.getByRole("button", { name: "Enter" }).click();
     await expect(page.locator(SEL.pinError)).toBeVisible();
   });
 
-  test("4.6 — PIN input accepts only digits", async ({ page }) => {
+  test("4.6 — PIN input accepts only digits", async ({ page, workerIndex }) => {
+    const pinProfileName = uniqueDeviceName(workerIndex, "PinTest");
     await page.goto("/profiles");
-    const card = page.locator(SEL.profileCard).filter({ hasText: "PinTest" });
+    const card = page.locator(SEL.profileCard).filter({ hasText: pinProfileName });
     await card.click();
     await page.locator(SEL.pinInput).fill("abcd");
     await expect(page.locator(SEL.pinInput)).toHaveValue("");

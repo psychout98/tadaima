@@ -143,9 +143,18 @@ export function handleHeartbeat(
 
 // Stale connection reaper — check every 90s for agents that haven't sent heartbeats
 const STALE_TIMEOUT_MS = 90_000;
+let reaperInterval: ReturnType<typeof setInterval> | null = null;
+
+export function stopStaleReaper(): void {
+  if (reaperInterval) {
+    clearInterval(reaperInterval);
+    reaperInterval = null;
+  }
+}
 
 export function startStaleReaper(): void {
-  setInterval(async () => {
+  stopStaleReaper();
+  reaperInterval = setInterval(async () => {
     // Find devices marked online but with no active WS connection
     const staleDevices = await db
       .select({ id: devices.id, profileId: devices.profileId })

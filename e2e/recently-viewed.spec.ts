@@ -1,22 +1,14 @@
 import { test, expect } from "./fixtures/auth.fixture";
 import { mockExternalApis } from "./fixtures/api-mock.fixture";
-import { API_URL } from "./helpers/constants";
+import { API_URL, ensureWorkerProfile } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-14: Recently Viewed", () => {
   let profileToken: string;
 
-  test.beforeEach(async () => {
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const body = await selectRes.json();
-    profileToken = body.token;
+  test.beforeEach(async ({}, testInfo) => {
+    const result = await ensureWorkerProfile(testInfo.workerIndex);
+    profileToken = result.profileToken;
   });
 
   test("14.1 — viewing a title adds to recently viewed", async () => {

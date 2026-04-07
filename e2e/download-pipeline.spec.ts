@@ -1,38 +1,17 @@
 import { test, expect } from "./fixtures/auth.fixture";
 import { MockAgent } from "./fixtures/ws-mock.fixture";
-import { API_URL, WS_URL } from "./helpers/constants";
+import { API_URL, WS_URL, ensureWorkerProfile, pairWorkerDevice } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-10: Download Pipeline", () => {
   let deviceToken: string;
   let profileToken: string;
 
-  test.beforeEach(async () => {
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const selectBody = await selectRes.json();
-    profileToken = selectBody.token;
-
-    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${profileToken}` },
-    });
-    if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
-    const { code } = await codeRes.json();
-    const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "DL-Test-Device", platform: "linux" }),
-    });
-    if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
-    const claimBody = await claimRes.json();
-    deviceToken = claimBody.deviceToken;
+  test.beforeEach(async ({}, testInfo) => {
+    const result = await ensureWorkerProfile(testInfo.workerIndex);
+    profileToken = result.profileToken;
+    const { deviceToken: dt } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "DL-Dev");
+    deviceToken = dt;
   });
 
   test("10.1 — agent receives download request", async ({ profilePage }) => {

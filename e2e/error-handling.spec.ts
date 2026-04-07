@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { API_URL } from "./helpers/constants";
+import { API_URL, TEST_ADMIN, ensureWorkerProfile } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-20: Error Handling & Edge Cases", () => {
@@ -51,26 +51,25 @@ test.describe("TS-20: Error Handling & Edge Cases", () => {
     await expect(profilePage.locator(SEL.sidebar)).toBeVisible();
   });
 
-  test("20.11 — multiple browser tabs work", async ({ browser }) => {
+  test("20.11 — multiple browser tabs work", async ({ browser }, testInfo) => {
     const ctx = await browser.newContext();
     const page1 = await ctx.newPage();
     const page2 = await ctx.newPage();
 
-    // Set up auth
+    // Use worker-scoped profile
+    const { profileId, profileToken, adminToken } =
+      await ensureWorkerProfile(testInfo.workerIndex);
+
     const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token, profile } = await selectRes.json();
+    const profiles: Array<{ id: string; name: string; avatar: string }> = await profilesRes.json();
+    const profile = profiles.find((p) => p.id === profileId)!;
+
     const adminRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "testadmin", password: "testpass123" }),
+      body: JSON.stringify({ username: TEST_ADMIN.username, password: TEST_ADMIN.password }),
     });
-    const { accessToken: adminToken, refreshToken: adminRefreshToken } = await adminRes.json();
+    const { accessToken: adminAccessToken, refreshToken: adminRefreshToken } = await adminRes.json();
 
     for (const page of [page1, page2]) {
       await page.goto("/");
@@ -86,7 +85,7 @@ test.describe("TS-20: Error Handling & Edge Cases", () => {
           };
           localStorage.setItem("auth-store", JSON.stringify(store));
         },
-        { token, profile, adminToken, adminRefreshToken },
+        { token: profileToken, profile, adminToken: adminAccessToken, adminRefreshToken },
       );
       await page.reload();
     }

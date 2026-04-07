@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { TEST_ADMIN, API_URL } from "./helpers/constants";
+import { TEST_ADMIN, API_URL, workerProfileName, uniqueDeviceName } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-03: Profile Management (Admin)", () => {
@@ -9,28 +9,30 @@ test.describe("TS-03: Profile Management (Admin)", () => {
     await expect(adminPage.locator(SEL.profileRow).first()).toBeVisible();
   });
 
-  test("3.2 — create a new profile", async ({ adminPage }) => {
+  test("3.2 — create a new profile", async ({ adminPage, workerIndex }) => {
+    const name = uniqueDeviceName(workerIndex, "NewProfile");
     await adminPage.locator(SEL.addProfileBtn).click();
     await expect(adminPage.locator(SEL.addProfileForm)).toBeVisible();
-    await adminPage.locator(SEL.newProfileName).fill("NewProfile");
+    await adminPage.locator(SEL.newProfileName).fill(name);
     await adminPage.locator(SEL.createProfileBtn).click();
-    await expect(adminPage.getByText("NewProfile")).toBeVisible();
+    await expect(adminPage.getByText(name)).toBeVisible();
   });
 
-  test("3.3 — create profile with PIN", async ({ adminPage }) => {
+  test("3.3 — create profile with PIN", async ({ adminPage, workerIndex }) => {
+    const name = uniqueDeviceName(workerIndex, "PinProfile");
     await adminPage.locator(SEL.addProfileBtn).click();
-    await adminPage.locator(SEL.newProfileName).fill("PinProfile");
+    await adminPage.locator(SEL.newProfileName).fill(name);
     await adminPage.locator(SEL.newProfilePin).fill("5678");
     await adminPage.locator(SEL.createProfileBtn).click();
-    await expect(adminPage.getByText("PinProfile")).toBeVisible();
+    await expect(adminPage.getByText(name)).toBeVisible();
     // Check PIN badge appears
-    const row = adminPage.locator(SEL.profileRow).filter({ hasText: "PinProfile" });
+    const row = adminPage.locator(SEL.profileRow).filter({ hasText: name });
     await expect(row.getByText("PIN")).toBeVisible();
   });
 
-  test("3.4 — duplicate name rejected", async ({ adminPage, adminLogin }) => {
+  test("3.4 — duplicate name rejected", async ({ adminPage, adminLogin, workerIndex }) => {
     const { accessToken } = await adminLogin();
-    // Try to create duplicate via API
+    // Try to create duplicate of the default profile
     const res = await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
@@ -43,12 +45,14 @@ test.describe("TS-03: Profile Management (Admin)", () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
-  test("3.5 — edit profile name via API", async ({ adminLogin }) => {
+  test("3.5 — edit profile name via API", async ({ adminLogin, workerIndex }) => {
     const { accessToken } = await adminLogin();
+    const origName = uniqueDeviceName(workerIndex, "NewProfile");
+    const newName = uniqueDeviceName(workerIndex, "RenamedProfile");
     // Get profiles
     const listRes = await fetch(`${API_URL}/profiles`);
     const profiles = await listRes.json();
-    const profile = profiles.find((p: { name: string }) => p.name === "NewProfile");
+    const profile = profiles.find((p: { name: string }) => p.name === origName);
     if (!profile) return;
 
     const res = await fetch(`${API_URL}/profiles/${profile.id}`, {
@@ -57,11 +61,11 @@ test.describe("TS-03: Profile Management (Admin)", () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ name: "RenamedProfile" }),
+      body: JSON.stringify({ name: newName }),
     });
     expect(res.ok).toBeTruthy();
     const updated = await res.json();
-    expect(updated.name).toBe("RenamedProfile");
+    expect(updated.name).toBe(newName);
   });
 
   test("3.6 — edit profile avatar via API", async ({ adminLogin }) => {
@@ -131,24 +135,25 @@ test.describe("TS-03: Profile Management (Admin)", () => {
     expect(updated.hasPin).toBe(false);
   });
 
-  test("3.9 — delete profile removes it", async ({ adminPage, adminLogin }) => {
+  test("3.9 — delete profile removes it", async ({ adminPage, adminLogin, workerIndex }) => {
     // Create one to delete
     const { accessToken } = await adminLogin();
+    const name = uniqueDeviceName(workerIndex, "ToDelete");
     await fetch(`${API_URL}/profiles`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ name: "ToDelete" }),
+      body: JSON.stringify({ name }),
     });
     await adminPage.reload();
-    await expect(adminPage.getByText("ToDelete")).toBeVisible();
+    await expect(adminPage.getByText(name)).toBeVisible();
 
     // Click delete
-    const row = adminPage.locator(SEL.profileRow).filter({ hasText: "ToDelete" });
+    const row = adminPage.locator(SEL.profileRow).filter({ hasText: name });
     await row.getByText("Delete").click();
-    await expect(adminPage.getByText("ToDelete")).not.toBeVisible();
+    await expect(adminPage.getByText(name)).not.toBeVisible();
   });
 
   test("3.10 — cannot delete last profile via API", async ({ adminLogin }) => {

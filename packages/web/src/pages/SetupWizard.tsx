@@ -41,7 +41,8 @@ export function SetupWizard() {
         profileName,
         profileAvatar,
       });
-      navigate("/profiles");
+      // Full reload so AppRoutes re-checks needsSetup and renders post-setup routes
+      window.location.href = "/profiles";
     } catch (e) {
       setError(e instanceof ApiError ? e.detail ?? e.code : "Setup failed");
     } finally {

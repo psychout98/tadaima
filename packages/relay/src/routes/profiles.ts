@@ -46,6 +46,17 @@ profileRoutes.post("/", requireAuth, requireAdmin, async (c) => {
   }
 
   const { name, avatar, pin } = parsed.data;
+
+  // Check for duplicate name
+  const existing = await db
+    .select({ id: profiles.id })
+    .from(profiles)
+    .where(eq(profiles.name, name))
+    .limit(1);
+  if (existing.length > 0) {
+    return c.json({ error: "DUPLICATE_NAME", detail: "A profile with this name already exists" }, 409);
+  }
+
   const pinHash = pin ? await hash(pin, 10) : null;
 
   const [profile] = await db

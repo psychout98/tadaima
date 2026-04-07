@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 type ConnectionStatus = "connecting" | "connected" | "disconnected";
 
@@ -69,7 +70,9 @@ interface AppState {
   removeToast: (id: string) => void;
 }
 
-export const useAuthStore = create<AppState>((set) => ({
+export const useAuthStore = create<AppState>()(
+  persist(
+    (set) => ({
   adminToken: null,
   adminRefreshToken: null,
   setAdminAuth: (accessToken, refreshToken) =>
@@ -125,4 +128,15 @@ export const useAuthStore = create<AppState>((set) => ({
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     })),
-}));
+    }),
+    {
+      name: "auth-store",
+      partialize: (state) => ({
+        adminToken: state.adminToken,
+        adminRefreshToken: state.adminRefreshToken,
+        profileToken: state.profileToken,
+        profile: state.profile,
+      }),
+    }
+  )
+);

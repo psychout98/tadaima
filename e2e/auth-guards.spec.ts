@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { API_URL, TEST_ADMIN } from "./helpers/constants";
+import { API_URL, TEST_ADMIN, ensureWorkerProfile, pairWorkerDevice } from "./helpers/constants";
 
 test.describe("TS-19: Auth Guards & Token Lifecycle", () => {
   test("19.1 — unauthenticated user redirected from /", async ({ page }) => {
@@ -42,29 +42,9 @@ test.describe("TS-19: Auth Guards & Token Lifecycle", () => {
     expect(res.ok()).toBeFalsy();
   });
 
-  test("19.7 — device token for agent endpoints", async ({}) => {
-    // Get a profile token
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token } = await selectRes.json();
-
-    // Pair device
-    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const { code } = await codeRes.json();
-    const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "AuthGuard-Dev", platform: "linux" }),
-    });
-    const { deviceToken } = await claimRes.json();
+  test("19.7 — device token for agent endpoints", async ({}, testInfo) => {
+    const { profileToken } = await ensureWorkerProfile(testInfo.workerIndex);
+    const { deviceToken } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "AuthGuard-Dev");
 
     // Use device token
     const configRes = await fetch(`${API_URL}/agent/config`, {
@@ -99,20 +79,13 @@ test.describe("TS-19: Auth Guards & Token Lifecycle", () => {
     expect(refreshRes.ok()).toBeFalsy();
   });
 
-  test("19.6 — admin and profile tokens are independent", async ({ request }) => {
+  test("19.6 — admin and profile tokens are independent", async ({ request }, testInfo) => {
     const loginRes = await request.post(`${API_URL}/auth/login`, {
       data: { username: TEST_ADMIN.username, password: TEST_ADMIN.password },
     });
     const { accessToken: adminToken } = await loginRes.json();
 
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token: profileToken } = await selectRes.json();
+    const { profileToken } = await ensureWorkerProfile(testInfo.workerIndex);
 
     // Both should be valid
     expect(adminToken).toBeTruthy();

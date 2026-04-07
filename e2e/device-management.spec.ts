@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { API_URL } from "./helpers/constants";
+import { API_URL, uniqueDeviceName } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-06: Device Management", () => {
@@ -11,7 +11,7 @@ test.describe("TS-06: Device Management", () => {
     expect(count).toBeGreaterThanOrEqual(0); // May be 0 depending on test order
   });
 
-  test("6.2 — rename device via API", async ({ profileSelect }) => {
+  test("6.2 — rename device via API", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     const devicesRes = await fetch(`${API_URL}/devices`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -25,14 +25,14 @@ test.describe("TS-06: Device Management", () => {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ name: "RenamedDevice" }),
+      body: JSON.stringify({ name: uniqueDeviceName(workerIndex, "Renamed") }),
     });
     expect(res.ok).toBeTruthy();
     const updated = await res.json();
-    expect(updated.name).toBe("RenamedDevice");
+    expect(updated.name).toBe(uniqueDeviceName(workerIndex, "Renamed"));
   });
 
-  test("6.3 — remove device via API", async ({ profileSelect }) => {
+  test("6.3 — remove device via API", async ({ profileSelect, workerIndex }) => {
     const { token } = await profileSelect();
     // Create a device to delete
     const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
@@ -40,10 +40,11 @@ test.describe("TS-06: Device Management", () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const { code } = await codeRes.json();
+    const devName = uniqueDeviceName(workerIndex, "ToRemove");
     const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "ToRemove", platform: "linux" }),
+      body: JSON.stringify({ code, deviceName: devName, platform: "linux" }),
     });
     const { deviceToken } = await claimRes.json();
 
@@ -52,7 +53,7 @@ test.describe("TS-06: Device Management", () => {
       headers: { Authorization: `Bearer ${token}` },
     });
     const devices = await devicesRes.json();
-    const toRemove = devices.find((d: { name: string }) => d.name === "ToRemove");
+    const toRemove = devices.find((d: { name: string }) => d.name === devName);
     if (!toRemove) return;
 
     const res = await fetch(`${API_URL}/devices/${toRemove.id}`, {

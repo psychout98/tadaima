@@ -21,7 +21,8 @@ import { recentlyViewedRoutes } from "./routes/recently-viewed.js";
 import { downloadRoutes } from "./routes/downloads.js";
 import { securityHeaders } from "./middleware.js";
 import { attachWebSocket } from "./ws/handler.js";
-import { startStaleReaper } from "./ws/pool.js";
+import { startStaleReaper, stopStaleReaper } from "./ws/pool.js";
+import { closeDatabase } from "./db.js";
 import { runMigrations } from "./migrate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -169,5 +170,17 @@ const server = serve({ fetch: app.fetch, port }, (info) => {
 // Attach WebSocket handling to the HTTP server
 attachWebSocket(server);
 startStaleReaper();
+
+// ── Graceful shutdown ─────────────────────────────────────────
+async function shutdown() {
+  console.log("Shutting down gracefully…");
+  stopStaleReaper();
+  server.close();
+  await closeDatabase();
+  process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
 
 export { app };

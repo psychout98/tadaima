@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/auth.fixture";
-import { API_URL, WS_URL } from "./helpers/constants";
+import { API_URL, WS_URL, TEST_ADMIN, ensureWorkerProfile, pairWorkerDevice } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 import { MockAgent } from "./fixtures/ws-mock.fixture";
 
@@ -7,32 +7,9 @@ test.describe("TS-07: WebSocket Connectivity", () => {
   let deviceToken: string;
 
   test.beforeEach(async ({}, testInfo) => {
-    // Pair a device for WebSocket tests
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token } = await selectRes.json();
-
-    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
-    const { code } = await codeRes.json();
-
-    const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "WS-Test-Device", platform: "linux" }),
-    });
-    if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
-    const body = await claimRes.json();
-    deviceToken = body.deviceToken;
+    const { profileToken } = await ensureWorkerProfile(testInfo.workerIndex);
+    const { deviceToken: dt } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "WS-Dev");
+    deviceToken = dt;
   });
 
   test("7.1 — web client connects on profile select", async ({ profilePage }) => {
@@ -115,24 +92,22 @@ test.describe("TS-07: WebSocket Connectivity", () => {
     await agent.disconnect();
   });
 
-  test("7.9 — multi-client broadcast", async ({ browser }) => {
-    // Open two tabs as same profile
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token, profile } = await selectRes.json();
+  test("7.9 — multi-client broadcast", async ({ browser }, testInfo) => {
+    const { profileToken, profileId, adminToken } =
+      await ensureWorkerProfile(testInfo.workerIndex);
 
-    // Admin login for full store setup
+    // Get full profile info
+    const profilesRes = await fetch(`${API_URL}/profiles`);
+    const profiles: Array<{ id: string; name: string; avatar: string }> = await profilesRes.json();
+    const profile = profiles.find((p) => p.id === profileId)!;
+
+    // Get admin refresh token
     const adminRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: "testadmin", password: "testpass123" }),
+      body: JSON.stringify({ username: TEST_ADMIN.username, password: TEST_ADMIN.password }),
     });
-    const { accessToken: adminToken, refreshToken: adminRefreshToken } = await adminRes.json();
+    const { accessToken: adminAccessToken, refreshToken: adminRefreshToken } = await adminRes.json();
 
     const setupPage = async () => {
       const ctx = await browser.newContext();
@@ -150,7 +125,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
           };
           localStorage.setItem("auth-store", JSON.stringify(store));
         },
-        { token, profile, adminToken, adminRefreshToken },
+        { token: profileToken, profile, adminToken: adminAccessToken, adminRefreshToken },
       );
       await page.reload();
       return { page, ctx };

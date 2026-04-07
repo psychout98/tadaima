@@ -2,10 +2,10 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
+  workers: process.env.CI ? 4 : 4,
   reporter: [
     ["list"],
     ["html"],
@@ -24,6 +24,7 @@ export default defineConfig({
     {
       name: "setup",
       testMatch: /setup-wizard\.spec\.ts/,
+      fullyParallel: false,
       use: { ...devices["Desktop Chrome"] },
     },
     {

@@ -1,35 +1,15 @@
 import { test, expect } from "./fixtures/auth.fixture";
 import { MockAgent } from "./fixtures/ws-mock.fixture";
-import { API_URL, WS_URL } from "./helpers/constants";
+import { API_URL, WS_URL, ensureWorkerProfile, pairWorkerDevice } from "./helpers/constants";
 import { SEL } from "./helpers/selectors";
 
 test.describe("TS-17: Toast Notifications", () => {
   let deviceToken: string;
 
-  test.beforeEach(async () => {
-    const profilesRes = await fetch(`${API_URL}/profiles`);
-    const profiles = await profilesRes.json();
-    if (!profiles.length) throw new Error("No profiles found — setup may not have completed");
-    const selectRes = await fetch(`${API_URL}/profiles/${profiles[0].id}/select`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    const { token } = await selectRes.json();
-    const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
-    const { code } = await codeRes.json();
-    const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, deviceName: "Toast-Device", platform: "linux" }),
-    });
-    if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
-    const body = await claimRes.json();
-    deviceToken = body.deviceToken;
+  test.beforeEach(async ({}, testInfo) => {
+    const { profileToken } = await ensureWorkerProfile(testInfo.workerIndex);
+    const { deviceToken: dt } = await pairWorkerDevice(profileToken, testInfo.workerIndex, "Toast-Dev");
+    deviceToken = dt;
   });
 
   test("17.1 — success toast appears on download complete", async ({ profilePage }) => {
