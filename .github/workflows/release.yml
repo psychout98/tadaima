@@ -125,60 +125,8 @@ jobs:
             packages/agent/dist/tadaima-agent-*
             packages/agent/dist/checksums.sha256
 
-  build-macos-installer:
-    needs: ci
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Build .pkg and .dmg
-        run: cd installers/macos && bash build-pkg.sh "${{ github.ref_name }}"
-
-      # Signing and notarization (requires Apple Developer secrets)
-      # - name: Sign package
-      #   run: productsign --sign "Developer ID Installer: ${{ secrets.APPLE_IDENTITY }}" installers/macos/Tadaima-Setup.pkg installers/macos/Tadaima-Setup-signed.pkg
-      # - name: Notarize
-      #   run: xcrun notarytool submit installers/macos/Tadaima-Setup-signed.pkg --apple-id "${{ secrets.APPLE_ID }}" --team-id "${{ secrets.APPLE_TEAM_ID }}" --password "${{ secrets.APPLE_PASSWORD }}" --wait
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-installer
-          path: |
-            installers/macos/Tadaima-Setup.dmg
-            installers/macos/Tadaima-Setup.pkg
-
-  build-windows-installer:
-    needs: ci
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install WiX Toolset
-        run: dotnet tool install --global wix
-
-      - name: Add WiX UI extension
-        run: wix extension add -g WixToolset.UI.wixext
-
-      - name: Create placeholder files
-        run: |
-          Set-Content "installers/windows/placeholder.txt" "Placeholder"
-          Set-Content "installers/windows/license.rtf" "{\rtf1 MIT License}"
-        shell: pwsh
-
-      - name: Build MSI
-        run: cd installers/windows && wix build tadaima.wxs -o Tadaima-Setup.msi -ext WixToolset.UI.wixext
-
-      # Code signing (requires certificate secrets)
-      # - name: Sign MSI
-      #   run: signtool sign /f cert.pfx /p ${{ secrets.SIGN_PASSWORD }} /tr http://timestamp.digicert.com /td sha256 installers/windows/Tadaima-Setup.msi
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer
-          path: installers/windows/Tadaima-Setup.msi
-
   github-release:
-    needs: [ci, docker-relay, docker-agent, build-binaries, build-macos-installer, build-windows-installer]
+    needs: [ci, docker-relay, docker-agent, build-binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -188,16 +136,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: agent-binaries
-          path: release-assets/
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: macos-installer
-          path: release-assets/
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: windows-installer
           path: release-assets/
 
       - name: Generate changelog
