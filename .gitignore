@@ -6,6 +6,9 @@ dist/
 .DS_Store
 planning/
 archive/
+specs/
+installers/
+CLAUDE.md
 
 # Playwright test results
 test-results/

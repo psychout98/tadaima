@@ -35,10 +35,15 @@ async function main() {
       const { TUI } = await import("./tui.js");
       const { shouldCheckNow, checkForUpdate, applyUpdate, logUpdateAdvisory } =
         await import("./updater.js");
+      const { writeStatus, removeStatus } = await import("./status-writer.js");
 
       const ws = new AgentWebSocket();
       const handler = new DownloadHandler(ws);
       const tui = new TUI(pkg.version);
+
+      // Track connection state for status file (ws internals are private)
+      let wsConnected = false;
+      let pendingUpdateVersion: string | null = null;
 
       // Non-blocking update check on startup
       let pendingUpdate: Awaited<ReturnType<typeof checkForUpdate>> = null;
@@ -55,6 +60,7 @@ async function main() {
           );
         }
         pendingUpdate = null;
+        pendingUpdateVersion = null;
       };
 
       const runUpdateCheck = async () => {
@@ -69,6 +75,7 @@ async function main() {
               return;
             }
             pendingUpdate = result;
+            pendingUpdateVersion = result.version;
             await tryApplyUpdate();
           }
         } catch (err) {
@@ -91,6 +98,7 @@ async function main() {
       }, 60 * 60 * 1000);
 
       ws.setMessageHandler((msg) => {
+        wsConnected = true; // receiving messages means we're connected
         const type = msg.type as string;
         if (type === "download:request") {
           handler.handleRequest(msg);
@@ -103,6 +111,33 @@ async function main() {
 
       ws.connect();
 
+      // Write status file every 10 seconds for tray/menu bar apps
+      const { config: agentConfig } = await import("./config.js");
+      const statusInterval = setInterval(() => {
+        writeStatus({
+          pid: process.pid,
+          version: pkg.version,
+          connected: wsConnected,
+          relay: agentConfig.get("relay"),
+          deviceName: agentConfig.get("deviceName"),
+          activeDownloads: handler.activeCount,
+          lastHeartbeat: new Date().toISOString(),
+          updateAvailable: pendingUpdateVersion,
+        });
+      }, 10_000);
+
+      // Write initial status immediately
+      writeStatus({
+        pid: process.pid,
+        version: pkg.version,
+        connected: false,
+        relay: agentConfig.get("relay"),
+        deviceName: agentConfig.get("deviceName"),
+        activeDownloads: 0,
+        lastHeartbeat: new Date().toISOString(),
+        updateAvailable: null,
+      });
+
       // Use TUI unless running as daemon
       if (!process.env.TADAIMA_DAEMON) {
         tui.start();
@@ -110,12 +145,16 @@ async function main() {
 
       process.on("SIGINT", () => {
         clearInterval(updateInterval);
+        clearInterval(statusInterval);
+        removeStatus();
         tui.stop();
         ws.stop();
         process.exit(0);
       });
       process.on("SIGTERM", () => {
         clearInterval(updateInterval);
+        clearInterval(statusInterval);
+        removeStatus();
         tui.stop();
         ws.stop();
         process.exit(0);

@@ -157,7 +157,7 @@ jobs:
         run: dotnet tool install --global wix
 
       - name: Add WiX UI extension
-        run: wix extension add WixToolset.UI.wixext/4.0.0
+        run: wix extension add -g WixToolset.UI.wixext
 
       - name: Create placeholder files
         run: |
