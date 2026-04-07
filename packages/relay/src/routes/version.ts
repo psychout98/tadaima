@@ -62,6 +62,7 @@ version.get("/", async (c) => {
   const release = await getLatestRelease();
 
   return c.json({
+    version: relayVersion,
     current: relayVersion,
     latest: release?.latest ?? null,
     downloadUrl: release?.downloadUrl ?? null,
