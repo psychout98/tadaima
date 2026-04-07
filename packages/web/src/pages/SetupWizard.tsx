@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
 import { api, ApiError } from "../lib/api";
 
 const AVATAR_COLORS = [
@@ -14,7 +13,6 @@ const AVATAR_COLORS = [
 ];
 
 export function SetupWizard() {
-  const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
