@@ -1,6 +1,6 @@
 import Foundation
 
-/// Represents the agent's runtime status, read from ~/.config/tadaima/status.json
+/// Represents the agent's runtime status, read from ~/Library/Preferences/tadaima-nodejs/status.json
 struct AgentStatus: Codable {
     let pid: Int
     let version: String
@@ -12,7 +12,7 @@ struct AgentStatus: Codable {
     let updateAvailable: String?
 }
 
-/// Represents the agent's config, read from ~/.config/tadaima/config.json
+/// Represents the agent's config, read from ~/Library/Preferences/tadaima-nodejs/config.json
 struct AgentConfig: Codable {
     var relay: String
     var deviceToken: String
@@ -36,9 +36,14 @@ class StatusReader {
     private let decoder = JSONDecoder()
     private let encoder = JSONEncoder()
 
-    init() {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        configDir = "\(home)/.config/tadaima"
+    init(configDir: String? = nil) {
+        if let dir = configDir {
+            self.configDir = dir
+        } else {
+            let home = FileManager.default.homeDirectoryForCurrentUser.path
+            // conf npm package with projectName:"tadaima" stores at ~/Library/Preferences/tadaima-nodejs/
+            self.configDir = "\(home)/Library/Preferences/tadaima-nodejs"
+        }
         encoder.outputFormatting = .prettyPrinted
     }
 

@@ -1,7 +1,8 @@
 import { writeFileSync, unlinkSync, existsSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { platform, homedir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { config } from "./config.js";
 
 const SERVICE_NAME = "tadaima-agent";
 
@@ -183,9 +184,9 @@ function installLaunchd(): void {
   <key>KeepAlive</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>${join(homedir(), ".config/tadaima/logs/tadaima.log")}</string>
+  <string>${join(dirname(config.path), "logs", "tadaima.log")}</string>
   <key>StandardErrorPath</key>
-  <string>${join(homedir(), ".config/tadaima/logs/tadaima.log")}</string>
+  <string>${join(dirname(config.path), "logs", "tadaima.log")}</string>
 </dict>
 </plist>
 `;

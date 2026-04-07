@@ -9,6 +9,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var updateMenuItem: NSMenuItem!
     private var refreshTimer: Timer?
     private var settingsController: SettingsWindowController?
+    private var pairController: PairWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
@@ -65,6 +66,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         updateMenuItem = NSMenuItem(title: "Check for Updates", action: #selector(checkForUpdates), keyEquivalent: "u")
         updateMenuItem.target = self
         menu.addItem(updateMenuItem)
+
+        let pairItem = NSMenuItem(title: "Pair Device...", action: #selector(openPair), keyEquivalent: "p")
+        pairItem.target = self
+        menu.addItem(pairItem)
 
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -133,6 +138,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         task.executableURL = URL(fileURLWithPath: "/usr/local/bin/tadaima-agent")
         task.arguments = ["update"]
         try? task.run()
+    }
+
+    @objc private func openPair() {
+        if pairController == nil {
+            pairController = PairWindowController()
+        }
+        pairController?.showWindow(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     @objc private func openSettings() {

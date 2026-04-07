@@ -5,6 +5,10 @@
 
 set -e
 
+# Postflight runs as root — resolve the real logged-in user
+LOGGED_IN_USER=$(stat -f "%Su" /dev/console)
+USER_HOME=$(dscl . -read /Users/"$LOGGED_IN_USER" NFSHomeDirectory | awk '{print $2}')
+
 INSTALL_DIR="/usr/local/bin"
 BINARY="${INSTALL_DIR}/tadaima-agent"
 
@@ -13,14 +17,14 @@ mkdir -p "${INSTALL_DIR}"
 mv /tmp/tadaima-agent "${BINARY}"
 chmod +x "${BINARY}"
 
-# If already configured, just install/restart the service
-CONF_DIR="${HOME}/.config/tadaima"
+# conf npm package with projectName:"tadaima" stores at ~/Library/Preferences/tadaima-nodejs/
+CONF_DIR="${USER_HOME}/Library/Preferences/tadaima-nodejs"
 if [ -f "${CONF_DIR}/config.json" ]; then
-  "${BINARY}" install-service 2>/dev/null || true
+  sudo -u "$LOGGED_IN_USER" "${BINARY}" install-service 2>/dev/null || true
   # Relaunch menu bar app if installed
   if [ -d "/Applications/Tadaima Menu.app" ]; then
-    killall "TadaimaMenu" 2>/dev/null || true
-    open "/Applications/Tadaima Menu.app"
+    sudo -u "$LOGGED_IN_USER" killall "TadaimaMenu" 2>/dev/null || true
+    sudo -u "$LOGGED_IN_USER" open "/Applications/Tadaima Menu.app"
   fi
   osascript -e '
     display dialog "Tadaima Agent has been updated and the service restarted." \
@@ -67,9 +71,9 @@ RD_API_KEY=$(echo "$PAIR_RESPONSE" | python3 -c "import sys,json; print(json.loa
 MOVIES_DIR=$(osascript -e 'POSIX path of (choose folder with prompt "Choose your Movies folder:")') || exit 1
 TV_DIR=$(osascript -e 'POSIX path of (choose folder with prompt "Choose your TV Shows folder:")') || exit 1
 
-# Write config file
-mkdir -p "$CONF_DIR"
-cat > "$CONF_DIR/config.json" << CONF
+# Write config file (as the logged-in user, not root)
+sudo -u "$LOGGED_IN_USER" mkdir -p "$CONF_DIR"
+sudo -u "$LOGGED_IN_USER" tee "$CONF_DIR/config.json" > /dev/null << CONF
 {
   "relay": "${RELAY_URL}",
   "deviceToken": "${DEVICE_TOKEN}",
@@ -92,14 +96,14 @@ cat > "$CONF_DIR/config.json" << CONF
 }
 CONF
 
-# Install launchd service
-"${BINARY}" install-service 2>/dev/null || true
+# Install launchd service (as the logged-in user so plist goes in their ~/Library/LaunchAgents)
+sudo -u "$LOGGED_IN_USER" "${BINARY}" install-service 2>/dev/null || true
 
 # Launch the menu bar app and add it as a login item
 MENU_APP="/Applications/Tadaima Menu.app"
 if [ -d "${MENU_APP}" ]; then
-  open "${MENU_APP}"
-  osascript -e "
+  sudo -u "$LOGGED_IN_USER" open "${MENU_APP}"
+  sudo -u "$LOGGED_IN_USER" osascript -e "
     tell application \"System Events\"
       if not (exists login item \"Tadaima Menu\") then
         make login item at end with properties {path:\"${MENU_APP}\", hidden:false}

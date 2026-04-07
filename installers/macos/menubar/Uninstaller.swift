@@ -27,12 +27,12 @@ class Uninstaller {
         // Remove binary
         try? FileManager.default.removeItem(atPath: "/usr/local/bin/tadaima-agent")
 
-        // Remove status file
-        try? FileManager.default.removeItem(atPath: "\(home)/.config/tadaima/status.json")
+        // Remove status file (conf stores in ~/Library/Preferences/tadaima-nodejs/)
+        try? FileManager.default.removeItem(atPath: "\(home)/Library/Preferences/tadaima-nodejs/status.json")
 
         let done = NSAlert()
         done.messageText = "Uninstall Complete"
-        done.informativeText = "The Tadaima Agent has been removed. Your configuration in ~/.config/tadaima/ has been preserved."
+        done.informativeText = "The Tadaima Agent has been removed. Your configuration has been preserved."
         done.alertStyle = .informational
         done.runModal()
 

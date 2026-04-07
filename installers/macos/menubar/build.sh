@@ -16,6 +16,7 @@ rm -rf "${APP_BUNDLE}"
 # Compile
 swiftc -o "${APP_NAME}" \
   TadaimaMenu.swift \
+  PairWindow.swift \
   SettingsWindow.swift \
   StatusReader.swift \
   Uninstaller.swift \
