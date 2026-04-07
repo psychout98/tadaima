@@ -207,7 +207,7 @@ test.describe("TS-13: Real-Time Progress UI", () => {
 
     const card = profilePage.locator(SEL.activeDownloadCard).filter({ hasText: "ETATest" });
     await expect(card).toBeVisible({ timeout: 3000 });
-    await expect(card.getByText(/ETA/)).toBeVisible({ timeout: 3000 });
+    await expect(card.getByText(/ETA \d/)).toBeVisible({ timeout: 3000 });
 
     await agent.completeDownload("eta-test");
     await agent.disconnect();

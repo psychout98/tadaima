@@ -114,7 +114,7 @@ export async function pairWorkerDevice(
   });
   if (devicesRes.ok) {
     const existingDevices: Array<{ id: string; name: string }> = await devicesRes.json();
-    const testDevices = existingDevices.filter((d) => d.name.includes(`${label}-w${workerIndex}`));
+    const testDevices = existingDevices.filter((d) => d.name === deviceName);
     for (const d of testDevices) {
       await fetch(`${API_URL}/devices/${d.id}`, {
         method: "DELETE",
