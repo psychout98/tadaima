@@ -6,9 +6,7 @@ import { dirname, join, extname } from "node:path";
 import { config } from "./config.js";
 import {
   GITHUB_RELEASES_API,
-  GITHUB_REPO,
   getAssetNameForPlatform,
-  type ReleaseInfo,
 } from "@tadaima/shared";
 
 export interface UpdateResult {
