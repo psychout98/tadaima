@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="Tadaima Agent"
+           Manufacturer="Tadaima"
+           Version="1.0.0"
+           UpgradeCode="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of Tadaima Agent is already installed." />
+
+    <Media Id="1" Cabinet="tadaima.cab" EmbedCab="yes" />
+
+    <!-- Properties collected from the UI -->
+    <Property Id="RELAY_URL" Value="" />
+    <Property Id="PAIRING_CODE" Value="" />
+    <Property Id="MOVIES_DIR" Value="" />
+    <Property Id="TV_DIR" Value="" />
+
+    <!-- Install directory -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="Tadaima">
+        <Component Id="AgentExe" Guid="B2C3D4E5-F6A7-8901-BCDE-F12345678901">
+          <!-- Placeholder — the actual binary is downloaded by the custom action -->
+          <File Id="AgentExePlaceholder" Source="placeholder.txt" Name="tadaima-agent.exe"
+                KeyPath="yes" />
+          <RemoveFile Id="RemoveAgent" On="uninstall" Name="tadaima-agent.exe" />
+        </Component>
+
+        <!-- Include the PowerShell scripts in the install directory -->
+        <Component Id="DownloadScript" Guid="D4E5F6A7-B8C9-0123-DEF0-234567890123">
+          <File Id="DownloadAgentPS1" Source="download-agent.ps1" KeyPath="yes" />
+        </Component>
+        <Component Id="PairScript" Guid="E5F6A7B8-C9D0-1234-EF01-345678901234">
+          <File Id="PairAndConfigurePS1" Source="pair-and-configure.ps1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Start Menu shortcut -->
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="TadaimaMenuFolder" Name="Tadaima">
+        <Component Id="StartMenuShortcut" Guid="C3D4E5F6-A7B8-9012-CDEF-123456789012">
+          <Shortcut Id="AgentShortcut"
+                    Name="Tadaima Agent Status"
+                    Target="[INSTALLFOLDER]tadaima-agent.exe"
+                    Arguments="status"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="RemoveMenuFolder" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\Tadaima" Name="MenuInstalled"
+                         Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- Custom Actions -->
+
+    <!-- CA1: Download the agent binary -->
+    <SetProperty Id="DownloadAgent" Before="DownloadAgent" Sequence="execute"
+                 Value="&quot;powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]download-agent.ps1&quot; -InstallDir &quot;[INSTALLFOLDER]&quot;" />
+
+    <CustomAction Id="DownloadAgent" DllEntry="WixQuietExec" BinaryRef="Wix4UtilCA_X86"
+                  Execute="deferred" Impersonate="no" Return="check" />
+
+    <!-- CA2: Pair with relay and write full config -->
+    <SetProperty Id="PairAndConfigure" Before="PairAndConfigure" Sequence="execute"
+                 Value="&quot;powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]pair-and-configure.ps1&quot; -RelayUrl &quot;[RELAY_URL]&quot; -PairingCode &quot;[PAIRING_CODE]&quot; -MoviesDir &quot;[MOVIES_DIR]&quot; -TvDir &quot;[TV_DIR]&quot;" />
+
+    <CustomAction Id="PairAndConfigure" DllEntry="WixQuietExec" BinaryRef="Wix4UtilCA_X86"
+                  Execute="deferred" Impersonate="yes" Return="check" />
+
+    <!-- CA3: Register Windows Service -->
+    <CustomAction Id="InstallService" Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]tadaima-agent.exe&quot; install-service"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <!-- CA4: Uninstall — stop and remove service -->
+    <CustomAction Id="UninstallService" Directory="INSTALLFOLDER"
+                  ExeCommand="&quot;[INSTALLFOLDER]tadaima-agent.exe&quot; uninstall-service"
+                  Execute="deferred" Impersonate="no" Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="DownloadAgent" After="InstallFiles">NOT Installed</Custom>
+      <Custom Action="PairAndConfigure" After="DownloadAgent">NOT Installed</Custom>
+      <Custom Action="InstallService" After="PairAndConfigure">NOT Installed</Custom>
+      <Custom Action="UninstallService" Before="RemoveFiles">REMOVE="ALL"</Custom>
+    </InstallExecuteSequence>
+
+    <!-- Features -->
+    <Feature Id="MainFeature" Title="Tadaima Agent" Level="1">
+      <ComponentRef Id="AgentExe" />
+      <ComponentRef Id="DownloadScript" />
+      <ComponentRef Id="PairScript" />
+      <ComponentRef Id="StartMenuShortcut" />
+    </Feature>
+
+    <!-- UI -->
+    <ui:WixUI Id="WixUI_Mondo" />
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+  </Package>
+</Wix>
