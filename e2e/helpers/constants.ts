@@ -100,6 +100,7 @@ export async function ensureWorkerProfile(
 
 /**
  * Pair a device for the current worker and return its token.
+ * Retries up to 3 times to handle race conditions in parallel CI.
  */
 export async function pairWorkerDevice(
   profileToken: string,
@@ -107,36 +108,48 @@ export async function pairWorkerDevice(
   label: string,
 ): Promise<{ deviceToken: string; deviceName: string }> {
   const deviceName = uniqueDeviceName(workerIndex, label);
+  const maxRetries = 3;
 
-  // Clean up existing test devices to avoid 400 errors from duplicates or device limit
-  const devicesRes = await fetch(`${API_URL}/devices`, {
-    headers: { Authorization: `Bearer ${profileToken}` },
-  });
-  if (devicesRes.ok) {
-    const existingDevices: Array<{ id: string; name: string }> = await devicesRes.json();
-    const testDevices = existingDevices.filter((d) => d.name === deviceName);
-    for (const d of testDevices) {
-      await fetch(`${API_URL}/devices/${d.id}`, {
-        method: "DELETE",
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Clean up existing test devices to avoid 400 errors from duplicates or device limit
+      const devicesRes = await fetch(`${API_URL}/devices`, {
         headers: { Authorization: `Bearer ${profileToken}` },
       });
+      if (devicesRes.ok) {
+        const existingDevices: Array<{ id: string; name: string }> = await devicesRes.json();
+        const testDevices = existingDevices.filter((d) => d.name === deviceName);
+        for (const d of testDevices) {
+          await fetch(`${API_URL}/devices/${d.id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${profileToken}` },
+          });
+        }
+      }
+
+      const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${profileToken}` },
+      });
+      if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
+      const { code } = await codeRes.json();
+
+      const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, name: deviceName, platform: "linux" }),
+      });
+      if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
+      const { deviceToken } = await claimRes.json();
+
+      return { deviceToken, deviceName };
+    } catch (err) {
+      if (attempt === maxRetries) throw err;
+      // Wait before retrying — exponential backoff helps with parallel worker races
+      await new Promise((r) => setTimeout(r, 500 * attempt));
     }
   }
 
-  const codeRes = await fetch(`${API_URL}/devices/pair/request`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${profileToken}` },
-  });
-  if (!codeRes.ok) throw new Error("Pair request failed: " + codeRes.status);
-  const { code } = await codeRes.json();
-
-  const claimRes = await fetch(`${API_URL}/devices/pair/claim`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, name: deviceName, platform: "linux" }),
-  });
-  if (!claimRes.ok) throw new Error("Pair claim failed: " + claimRes.status);
-  const { deviceToken } = await claimRes.json();
-
-  return { deviceToken, deviceName };
+  // Unreachable, but satisfies TypeScript
+  throw new Error("pairWorkerDevice: exhausted retries");
 }
