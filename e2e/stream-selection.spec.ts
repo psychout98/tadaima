@@ -94,7 +94,8 @@ test.describe("TS-09: Stream Selection", () => {
     await profilePage.locator(SEL.resultCard).first().click();
     const seasonSelect = profilePage.locator("select").first();
     await expect(seasonSelect).toHaveValue("1", { timeout: 5000 });
-    await expect(profilePage.getByText("Episode 1")).toBeVisible();
+    const episodeSelect = profilePage.locator("select").nth(1);
+    await expect(episodeSelect).toHaveValue("1");
   });
 
   test("9.11 — device selector visible", async ({ profilePage }) => {

@@ -60,8 +60,8 @@ test.describe("TS-08: Search & Browse", () => {
     await profilePage.locator(SEL.searchBtn).click();
     await profilePage.locator(SEL.resultCard).first().click();
     await expect(profilePage.getByRole("heading", { name: "Inception" })).toBeVisible();
-    await expect(profilePage.getByText("2010")).toBeVisible();
-    await expect(profilePage.getByText("Movie")).toBeVisible();
+    await expect(profilePage.getByText("2010", { exact: true })).toBeVisible();
+    await expect(profilePage.locator(SEL.streamPicker).getByText("Movie")).toBeVisible();
   });
 
   test("8.8 — TV show details show seasons", async ({ profilePage }) => {

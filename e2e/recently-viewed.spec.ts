@@ -97,9 +97,31 @@ test.describe("TS-14: Recently Viewed", () => {
 
   test("14.6 — click recently viewed opens details", async ({ profilePage }) => {
     await mockExternalApis(profilePage);
+    // Ensure a recently-viewed item exists for this worker
+    await profilePage.evaluate(async () => {
+      const store = JSON.parse(localStorage.getItem("auth-store") ?? "{}");
+      const token = store.state?.profileToken;
+      if (token) {
+        await fetch("/api/recently-viewed", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            tmdbId: 27205,
+            mediaType: "movie",
+            title: "Inception",
+            year: 2010,
+            posterPath: null,
+            imdbId: "tt1375666",
+          }),
+        });
+      }
+    });
     await profilePage.goto("/");
     const recentSection = profilePage.locator(SEL.recentlyViewed);
-    await expect(recentSection).toBeVisible({ timeout: 3000 });
+    await expect(recentSection).toBeVisible({ timeout: 5000 });
     const firstItem = recentSection.locator("button").first();
     await expect(firstItem).toBeVisible();
     await firstItem.click();

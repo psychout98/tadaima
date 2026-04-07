@@ -41,6 +41,8 @@ export function AdminPanel() {
   const [editTmdb, setEditTmdb] = useState("");
   const [settingsMsg, setSettingsMsg] = useState("");
 
+  const loggingOut = useRef(false);
+
   useEffect(() => {
     if (!adminToken) {
       if (!loggingOut.current) {
@@ -107,8 +109,6 @@ export function AdminPanel() {
       addToast("error", "Failed to save settings");
     }
   }
-
-  const loggingOut = useRef(false);
 
   function handleLogout() {
     loggingOut.current = true;

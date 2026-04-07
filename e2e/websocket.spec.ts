@@ -80,6 +80,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
       payload: {
         jobId: "test-job-123",
         filePath: "/test/file.mkv",
+        finalSize: 1_000_000_000,
         _meta: { title: "Test Movie Notify" },
       },
     });
@@ -152,6 +153,7 @@ test.describe("TS-07: WebSocket Connectivity", () => {
       payload: {
         jobId: "broadcast-test",
         filePath: "/test.mkv",
+        finalSize: 1_000_000_000,
         _meta: { title: "Broadcast Test" },
       },
     });
