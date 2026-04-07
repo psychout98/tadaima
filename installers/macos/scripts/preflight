@@ -13,38 +13,37 @@ else
   ASSET="tadaima-agent-darwin-x64"
 fi
 
-echo "Detecting architecture: ${ARCH} → ${ASSET}"
-
 # Get the latest release tag
-LATEST=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | cut -d'"' -f4)
+LATEST=$(curl -sL "https://api.github.com/repos/${REPO}/releases/latest" \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
 if [ -z "$LATEST" ]; then
-  echo "ERROR: Could not determine latest release." >&2
+  osascript -e 'display alert "Download Failed" message "Could not determine the latest release. Check your internet connection." as critical'
   exit 1
 fi
 
-echo "Latest release: ${LATEST}"
-
 # Download binary
-echo "Downloading ${ASSET}..."
 curl -fSL -o /tmp/tadaima-agent \
-  "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}"
+  "https://github.com/${REPO}/releases/download/${LATEST}/${ASSET}" || {
+  osascript -e 'display alert "Download Failed" message "Could not download the agent binary. Check your internet connection." as critical'
+  exit 1
+}
 
 # Download and verify checksum
-echo "Verifying checksum..."
 curl -fSL -o /tmp/checksums.sha256 \
-  "https://github.com/${REPO}/releases/download/${LATEST}/checksums.sha256"
+  "https://github.com/${REPO}/releases/download/${LATEST}/checksums.sha256" || {
+  osascript -e 'display alert "Download Failed" message "Could not download checksums. Check your internet connection." as critical'
+  rm -f /tmp/tadaima-agent
+  exit 1
+}
 
 EXPECTED=$(grep "${ASSET}" /tmp/checksums.sha256 | awk '{print $1}')
 ACTUAL=$(shasum -a 256 /tmp/tadaima-agent | awk '{print $1}')
 
 if [ "$EXPECTED" != "$ACTUAL" ]; then
-  echo "ERROR: Checksum mismatch!" >&2
-  echo "  Expected: ${EXPECTED}" >&2
-  echo "  Actual:   ${ACTUAL}" >&2
+  osascript -e 'display alert "Download Failed" message "Checksum verification failed. The download may be corrupted. Please try again." as critical'
   rm -f /tmp/tadaima-agent /tmp/checksums.sha256
   exit 1
 fi
 
-echo "Checksum verified."
 chmod +x /tmp/tadaima-agent
 rm -f /tmp/checksums.sha256

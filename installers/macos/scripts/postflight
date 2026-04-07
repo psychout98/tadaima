@@ -1,34 +1,99 @@
 #!/bin/bash
 # Tadaima Agent — macOS installer postflight script
-# Moves binary to /usr/local/bin, runs setup if needed, and installs the launchd service.
+# Fully GUI experience via osascript — no Terminal interaction.
+# Moves binary, collects config via native macOS dialogs, calls pairing API, installs service.
 
 set -e
 
 INSTALL_DIR="/usr/local/bin"
-CONF_DIR="${HOME}/.config/tadaima"
 BINARY="${INSTALL_DIR}/tadaima-agent"
 
-# Ensure install directory exists
-mkdir -p "${INSTALL_DIR}"
-
 # Move downloaded binary into place
+mkdir -p "${INSTALL_DIR}"
 mv /tmp/tadaima-agent "${BINARY}"
 chmod +x "${BINARY}"
 
-echo "Installed to ${BINARY}"
-
-# Run interactive setup if not already configured
-if [ ! -f "${CONF_DIR}/config.json" ]; then
-  echo "Running first-time setup..."
-  # Open Terminal for interactive setup
-  osascript -e "
-    tell application \"Terminal\"
-      activate
-      do script \"${BINARY} setup && ${BINARY} install-service\"
-    end tell
-  "
-  echo "Setup wizard opened in Terminal."
-else
-  echo "Existing configuration found. Installing service..."
-  "${BINARY}" install-service || true
+# If already configured, just install/restart the service
+CONF_DIR="${HOME}/.config/tadaima"
+if [ -f "${CONF_DIR}/config.json" ]; then
+  "${BINARY}" install-service 2>/dev/null || true
+  osascript -e '
+    display dialog "Tadaima Agent has been updated and the service restarted." \
+      with title "Tadaima" \
+      with icon note \
+      buttons {"OK"} default button "OK"
+  '
+  exit 0
 fi
+
+# --- First-time setup: collect config via native macOS dialogs ---
+
+# Collect relay URL
+RELAY_URL=$(osascript -e '
+  text returned of (display dialog "Enter your Tadaima relay URL:" \
+    default answer "https://" \
+    with title "Tadaima Setup" \
+    with icon note)
+') || exit 1
+
+# Collect pairing code
+PAIRING_CODE=$(osascript -e '
+  text returned of (display dialog "Enter your 6-character pairing code:" & return & "(from the Tadaima web app → Devices → Pair New Device)" \
+    default answer "" \
+    with title "Tadaima Setup" \
+    with icon note)
+') || exit 1
+
+# Call the pairing API
+DEVICE_NAME=$(hostname -s | tr '[:upper:]' '[:lower:]')
+PAIR_RESPONSE=$(curl -sf -X POST "${RELAY_URL}/api/devices/pair/claim" \
+  -H "Content-Type: application/json" \
+  -d "{\"code\":\"$(echo "$PAIRING_CODE" | tr '[:lower:]' '[:upper:]')\",\"name\":\"${DEVICE_NAME}\",\"platform\":\"macos\"}" \
+  2>&1) || {
+    osascript -e 'display alert "Pairing Failed" message "Could not pair with the relay. Check your URL and pairing code, then re-run the installer." as critical'
+    exit 1
+  }
+
+DEVICE_ID=$(echo "$PAIR_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['deviceId'])")
+DEVICE_TOKEN=$(echo "$PAIR_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin)['deviceToken'])")
+RD_API_KEY=$(echo "$PAIR_RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('rdApiKey',''))")
+
+# Collect media directories via native folder pickers
+MOVIES_DIR=$(osascript -e 'POSIX path of (choose folder with prompt "Choose your Movies folder:")') || exit 1
+TV_DIR=$(osascript -e 'POSIX path of (choose folder with prompt "Choose your TV Shows folder:")') || exit 1
+
+# Write config file
+mkdir -p "$CONF_DIR"
+cat > "$CONF_DIR/config.json" << CONF
+{
+  "relay": "${RELAY_URL}",
+  "deviceToken": "${DEVICE_TOKEN}",
+  "deviceId": "${DEVICE_ID}",
+  "deviceName": "${DEVICE_NAME}",
+  "profileName": "",
+  "directories": {
+    "movies": "${MOVIES_DIR%/}",
+    "tv": "${TV_DIR%/}",
+    "staging": "/tmp/tadaima/staging"
+  },
+  "realDebrid": {
+    "apiKey": "${RD_API_KEY}"
+  },
+  "maxConcurrentDownloads": 2,
+  "rdPollInterval": 30,
+  "lastUpdateCheck": "",
+  "updateChannel": "stable",
+  "previousBinaryPath": ""
+}
+CONF
+
+# Install launchd service
+"${BINARY}" install-service 2>/dev/null || true
+
+# Success dialog
+osascript -e '
+  display dialog "Tadaima Agent is installed and running!" & return & return & "It will start automatically when you log in." \
+    with title "Tadaima Setup Complete" \
+    with icon note \
+    buttons {"OK"} default button "OK"
+'
