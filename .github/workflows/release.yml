@@ -157,8 +157,17 @@ jobs:
             exit 1
           fi
 
+      - name: Strip workspace references before publish
+        run: |
+          cd packages/agent
+          node -e "
+            const pkg = require('./package.json');
+            delete pkg.devDependencies['@tadaima/shared'];
+            require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
       - name: Publish to npm
-        run: cd packages/agent && pnpm publish --access public --no-git-checks --provenance
+        run: cd packages/agent && npm publish --access public --provenance
 
   github-release:
     needs: [ci, docker-relay, docker-agent, build-binaries, npm-publish]
