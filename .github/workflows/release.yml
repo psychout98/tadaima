@@ -141,7 +141,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
@@ -165,9 +165,6 @@ jobs:
             delete pkg.devDependencies['@tadaima/shared'];
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
-
-      - name: Upgrade npm for trusted publishing support
-        run: npm install -g npm@latest
 
       - name: Publish to npm
         run: cd packages/agent && npm publish --access public --provenance
