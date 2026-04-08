@@ -166,10 +166,11 @@ jobs:
             require('fs').writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
+      - name: Upgrade npm for trusted publishing support
+        run: npm install -g npm@latest
+
       - name: Publish to npm
         run: cd packages/agent && npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   github-release:
     needs: [ci, docker-relay, docker-agent, build-binaries, npm-publish]
