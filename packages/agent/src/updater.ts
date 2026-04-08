@@ -204,7 +204,7 @@ export function rollback(): void {
  */
 export function logUpdateAdvisory(currentVersion: string, latestVersion: string): void {
   console.log(`\nTadaima v${latestVersion} is available (you have v${currentVersion}).`);
-  console.log("  npm:    npm update -g @tadaima/agent");
+  console.log("  npm:    npm install -g @psychout98/tadaima@latest");
   console.log("  Docker: docker compose pull && docker compose up -d\n");
 }
 

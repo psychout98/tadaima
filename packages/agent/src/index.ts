@@ -1,12 +1,7 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
 import type { AgentConfig } from "./config.js";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const pkg = JSON.parse(
-  readFileSync(join(__dirname, "..", "package.json"), "utf-8"),
-);
+declare const AGENT_VERSION: string;
+const pkg = { version: AGENT_VERSION };
 
 const args = process.argv.slice(2);
 const command = args[0];
@@ -246,13 +241,16 @@ async function main() {
     }
 
     case "update": {
-      const { checkForUpdate, applyUpdate } = await import("./updater.js");
+      const { checkForUpdate, applyUpdate, logUpdateAdvisory } = await import("./updater.js");
+      const isBinaryInstall = !process.argv[1]?.includes("node_modules");
       console.log(`Current version: v${pkg.version}`);
       console.log("Checking for updates...");
       try {
         const result = await checkForUpdate(pkg.version);
         if (!result) {
           console.log("Already up to date.");
+        } else if (!isBinaryInstall) {
+          logUpdateAdvisory(pkg.version, result.version);
         } else {
           console.log(`Update available: v${result.version}`);
           await applyUpdate(result);

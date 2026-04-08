@@ -125,8 +125,41 @@ jobs:
             packages/agent/dist/tadaima-agent-*
             packages/agent/dist/checksums.sha256
 
+  npm-publish:
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+      - name: Verify version matches tag
+        run: |
+          PKG_VERSION=$(node -p "require('./packages/agent/package.json').version")
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: package.json version ($PKG_VERSION) doesn't match tag ($TAG_VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Publish to npm
+        run: cd packages/agent && pnpm publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
   github-release:
-    needs: [ci, docker-relay, docker-agent, build-binaries]
+    needs: [ci, docker-relay, docker-agent, build-binaries, npm-publish]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
