@@ -1,6 +1,6 @@
 {
   "name": "@psychout98/tadaima",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI download agent for Tadaima — a self-hosted media download orchestrator",
   "type": "module",
   "license": "MIT",
