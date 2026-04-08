@@ -158,7 +158,7 @@ jobs:
           fi
 
       - name: Publish to npm
-        run: cd packages/agent && npm publish --access public
+        run: cd packages/agent && pnpm publish --access public --no-git-checks --provenance
 
   github-release:
     needs: [ci, docker-relay, docker-agent, build-binaries, npm-publish]
