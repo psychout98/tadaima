@@ -7,7 +7,7 @@ A self-hosted media download orchestrator. Deploy your own private instance, sea
 [![CI](https://github.com/psychout98/tadaima/actions/workflows/ci.yml/badge.svg)](https://github.com/psychout98/tadaima/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/template/tadaima?referralCode=tadaima)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/giving-simplicity)
 
 ---
 
@@ -72,18 +72,18 @@ Open the relay URL in your browser. The setup wizard walks you through:
 
 **npm (all platforms):**
 ```bash
-npm install -g @tadaima/agent
-tadaima-agent setup
-tadaima-agent install-service   # start on login
+npm install -g @psychout98/tadaima
+tadaima setup
+tadaima install-service   # start on login
 ```
 
 **Standalone binary (Linux):**
 ```bash
-curl -L -o /usr/local/bin/tadaima-agent \
-  https://github.com/psychout98/tadaima/releases/latest/download/tadaima-agent-linux-x64
-chmod +x /usr/local/bin/tadaima-agent
-tadaima-agent setup
-tadaima-agent install-service
+curl -L -o /usr/local/bin/tadaima \
+  https://github.com/psychout98/tadaima/releases/latest/download/tadaima-linux-x64
+chmod +x /usr/local/bin/tadaima
+tadaima setup
+tadaima install-service
 ```
 
 The agent checks for updates on startup and every 24 hours. Service installations update and restart seamlessly. npm and Docker users see an update notice in the logs.
@@ -156,17 +156,17 @@ The agent image is published to the GitHub Container Registry. Because `setup` i
 ## Agent CLI
 
 ```
-tadaima-agent setup              # Pair with your Tadaima instance
-tadaima-agent start              # Start (foreground with TUI)
-tadaima-agent start -d           # Start as background daemon
-tadaima-agent stop               # Stop daemon
-tadaima-agent status             # Show connection status
-tadaima-agent config list        # Show configuration
-tadaima-agent logs -f            # Follow log output
-tadaima-agent install-service    # Install as system service
-tadaima-agent update             # Check for and apply updates
-tadaima-agent rollback           # Restore previous version
-tadaima-agent version            # Show version
+tadaima setup              # Pair with your Tadaima instance
+tadaima start              # Start (foreground with TUI)
+tadaima start -d           # Start as background daemon
+tadaima stop               # Stop daemon
+tadaima status             # Show connection status
+tadaima config list        # Show configuration
+tadaima logs -f            # Follow log output
+tadaima install-service    # Install as system service
+tadaima update             # Check for and apply updates
+tadaima rollback           # Restore previous version
+tadaima version            # Show version
 ```
 
 ## Self-Hosting
