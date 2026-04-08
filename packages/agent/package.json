@@ -1,6 +1,6 @@
 {
   "name": "@psychout98/tadaima",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "CLI download agent for Tadaima — a self-hosted media download orchestrator",
   "type": "module",
   "license": "MIT",
@@ -9,7 +9,14 @@
     "url": "https://github.com/psychout98/tadaima.git",
     "directory": "packages/agent"
   },
-  "keywords": ["tadaima", "media", "download", "plex", "real-debrid", "agent"],
+  "keywords": [
+    "tadaima",
+    "media",
+    "download",
+    "plex",
+    "real-debrid",
+    "agent"
+  ],
   "engines": {
     "node": ">=18"
   },
