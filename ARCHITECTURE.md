@@ -358,7 +358,7 @@ State managed with **zustand** — a lightweight store that merges WebSocket eve
 
 #### UI Design
 
-Dark theme, `#0f0f0f` background, indigo accent `#6366f1`, card/badge/progress-bar patterns. The web app should feel like a polished personal media tool.
+Dark theme, `#0f0f0f` background, indigo accent `#6366f1`, card/badge/progress-bar patterns. The web app should feel like a polished personal media tool. *[Phase 1: layout and overflow issues on mobile devices (phones + tablets); Tailwind responsive breakpoints need audit.]*
 
 ### 3. Agent (`packages/agent`)
 
@@ -517,6 +517,7 @@ type DownloadProgress = WsMessage & {
     jobId: string
     phase: "adding" | "waiting" | "unrestricting" | "downloading" | "organizing"
     progress: number        // 0-100
+    title?: string          // [Phase 1: agent currently omits this — sends only jobId/phase/progress, causing "Unknown" title in web UI]
     downloadedBytes?: number
     totalBytes?: number
     speedBps?: number
@@ -528,7 +529,7 @@ type DownloadCompleted = WsMessage & {
   type: "download:completed"
   payload: {
     jobId: string
-    filePath: string
+    filePath: string        // [Phase 1: agent only stores last file path in multi-file TV downloads — needs to support array or per-file messages]
     finalSize: number
   }
 }
@@ -550,6 +551,7 @@ type DownloadQueued = WsMessage & {
     requestId: string
     title: string
     deviceName: string
+    // [Phase 1: relay currently drops mediaType/season from queued broadcasts — TV downloads show with no context]
   }
 }
 
@@ -557,7 +559,7 @@ type AgentHeartbeat = WsMessage & {
   type: "agent:heartbeat"
   payload: {
     activeJobs: number
-    diskFreeBytes: number
+    diskFreeBytes: number   // [Phase 1: agent currently sends freemem() (RAM), not actual disk space]
     uptimeSeconds: number
   }
 }
@@ -793,7 +795,7 @@ Update checks are non-blocking, at most once per 24 hours. The agent continues r
 - [ ] Web: first-run setup wizard
 - [ ] Web: admin login page
 - [ ] Web: profile picker page
-- [ ] Web: admin panel (manage profiles, instance settings)
+- [ ] Web: admin panel (manage profiles, instance settings) *[Phase 1: admin panel exists but is missing the "Add Profile" button — profiles can only be created during setup wizard]*
 
 ### Phase 3: Device Pairing
 - [ ] Relay: device pairing (code generation, claim with RD key distribution, confirmation)
@@ -816,10 +818,10 @@ Update checks are non-blocking, at most once per 24 hours. The agent continues r
 - [ ] Relay: poster image proxy
 - [ ] Web: search page (results grid)
 - [ ] Web: stream picker (filters, RD cache badge, download button)
-- [ ] Web: TV season/episode selector
+- [ ] Web: TV season/episode selector *[Phase 1: episode selector being removed; full-season download only. Per-episode file picker deferred.]*
 
 ### Phase 6: Download Pipeline & Queue
-- [ ] Relay: download queue (store when offline, deliver on reconnect)
+- [ ] Relay: download queue (store when offline, deliver on reconnect) *[Phase 1: queued payloads delivered without schema validation; queue broadcasts missing mediaType/season fields]*
 - [ ] Agent: Real-Debrid client (TypeScript)
 - [ ] Agent: download command handler
 - [ ] Agent: file download with progress streaming
@@ -830,7 +832,7 @@ Update checks are non-blocking, at most once per 24 hours. The agent continues r
 - [ ] Agent: on-connect queue pickup
 
 ### Phase 7: Real-Time UI
-- [ ] Web: downloads page (active + queued + history sections)
+- [ ] Web: downloads page (active + queued + history sections) *[Phase 1: retry button in history tab is non-functional (no click handler); active downloads show "Unknown" title]*
 - [ ] Web: live progress bars from WebSocket events
 - [ ] Web: download queue display with "waiting for device" states
 - [ ] Web: toast notifications (started, completed with "ただいま", failed, queued)
@@ -880,7 +882,7 @@ Update checks are non-blocking, at most once per 24 hours. The agent continues r
 
 4. **Download queue** — When a device is offline, download requests are queued in the database (just metadata, not files). Agent picks them up on reconnect. Real-Debrid serves as implicit cloud storage. No object storage needed.
 
-5. **TV show downloads** — Default to downloading all cached files for the selected content. Once RD loads the cached files, give the user an option to select/deselect individual files before confirming.
+5. **TV show downloads** — Default to downloading all cached files for the selected content. The agent sends the full torrent to Real-Debrid (season packs are typically cached as a unit), downloads all cached files, and organizes them into the Plex folder structure. *[Phase 1: per-episode selection UI removed; full-season download is the only mode. A file-picker UI (select/deselect individual episodes after RD returns cached files) is deferred to a later phase.]*
 
 6. **Multi-agent downloads** — Each profile has a default device. The download button sends to the default, but a dropdown lets them pick a different online agent if they have multiple.
 
