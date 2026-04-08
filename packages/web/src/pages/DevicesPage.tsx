@@ -114,7 +114,7 @@ export function DevicesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Devices</h1>
         <button
           data-testid="pair-device-btn"
@@ -155,7 +155,7 @@ export function DevicesPage() {
             <div
               data-testid="device-card"
               key={device.id}
-              className="flex items-center justify-between rounded-lg bg-zinc-900 p-4"
+              className="flex flex-col gap-3 rounded-lg bg-zinc-900 p-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="flex items-center gap-3">
                 <div

@@ -122,15 +122,13 @@ export function SettingsPage() {
         >
           Switch Profile
         </button>
-        {adminToken && (
-          <button
-            data-testid="admin-panel-btn"
-            onClick={() => navigate("/admin")}
-            className="w-full rounded-lg bg-zinc-800 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-700"
-          >
-            Admin Panel
-          </button>
-        )}
+        <button
+          data-testid="admin-panel-btn"
+          onClick={() => navigate(adminToken ? "/admin" : "/admin/login")}
+          className="w-full rounded-lg bg-zinc-800 py-3 text-sm font-medium text-zinc-300 hover:bg-zinc-700"
+        >
+          Admin Panel
+        </button>
       </div>
     </div>
   );

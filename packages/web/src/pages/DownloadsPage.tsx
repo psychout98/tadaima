@@ -25,17 +25,20 @@ interface HistoryItem {
   id: string;
   title: string;
   mediaType: string;
+  magnet: string;
+  expectedSize: number;
   sizeBytes: number | null;
   status: string;
   error: string | null;
   retryable: boolean | null;
   startedAt: string;
   completedAt: string | null;
-  magnet?: string;
-  torrentName?: string;
-  tmdbId?: number;
-  imdbId?: string;
-  year?: number;
+  torrentName: string | null;
+  tmdbId: number;
+  imdbId: string | null;
+  year: number | null;
+  season: number | null;
+  episode: number | null;
 }
 
 interface QueuedItem {
@@ -76,7 +79,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export function DownloadsPage() {
-  const { profileToken, activeDownloads } = useAuthStore();
+  const { profileToken, activeDownloads, addToast } = useAuthStore();
   const [tab, setTab] = useState<Tab>("all");
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [queued, setQueued] = useState<QueuedItem[]>([]);
@@ -105,6 +108,27 @@ export function DownloadsPage() {
     const interval = setInterval(loadData, 10000);
     return () => clearInterval(interval);
   }, [loadData]);
+
+  function handleRetry(item: HistoryItem) {
+    wsClient.send({
+      id: `retry-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "download:request",
+      timestamp: Date.now(),
+      payload: {
+        tmdbId: item.tmdbId,
+        imdbId: item.imdbId,
+        title: item.title,
+        year: item.year,
+        mediaType: item.mediaType,
+        ...(item.season != null && { season: item.season }),
+        ...(item.episode != null && { episode: item.episode }),
+        magnet: item.magnet,
+        torrentName: item.torrentName,
+        expectedSize: item.expectedSize,
+      },
+    });
+    addToast("info", `Retrying: ${item.title}`);
+  }
 
   function handleCancel(jobId: string) {
     wsClient.send({
@@ -149,7 +173,7 @@ export function DownloadsPage() {
       <h1 className="mb-4 text-2xl font-bold">Downloads</h1>
 
       {/* Tab bar */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-zinc-900 p-1">
+      <div className="mb-6 flex gap-1 overflow-x-auto rounded-lg bg-zinc-900 p-1">
         {TABS.map((t) => (
           <button
             key={t.key}
@@ -256,7 +280,10 @@ export function DownloadsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   {h.status === "failed" && h.retryable && (
-                    <button className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white">
+                    <button
+                      className="rounded bg-blue-600 px-3 py-1 text-xs font-medium text-white"
+                      onClick={() => handleRetry(h)}
+                    >
                       Retry
                     </button>
                   )}

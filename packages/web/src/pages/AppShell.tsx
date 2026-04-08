@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate, useLocation, Navigate } from "react-router";
 import { useAuthStore } from "../lib/store";
 import { wsClient } from "../lib/ws-client";
@@ -61,14 +61,14 @@ export function AppShell() {
           message.payload.lastSeenAt,
         );
       } else if (message.type === "download:accepted") {
-        const title =
-          typeof raw?.title === "string" ? raw.title : "Unknown";
+        const title = message.payload.title ?? "Unknown";
+        const mediaType = message.payload.mediaType ?? "";
         addToast("info", `Download started: ${title}`);
         setActiveDownload({
           jobId: message.payload.jobId,
           requestId: message.payload.requestId,
           title,
-          mediaType: "",
+          mediaType,
           phase: "adding",
           progress: 0,
         });
@@ -77,8 +77,8 @@ export function AppShell() {
         setActiveDownload({
           jobId: message.payload.jobId,
           requestId: existing?.requestId ?? "",
-          title: existing?.title ?? "",
-          mediaType: existing?.mediaType ?? "",
+          title: message.payload.title ?? existing?.title ?? "Unknown",
+          mediaType: message.payload.mediaType ?? existing?.mediaType ?? "",
           phase: message.payload.phase,
           progress: message.payload.progress,
           downloadedBytes: message.payload.downloadedBytes,
@@ -148,13 +148,46 @@ export function AppShell() {
   }
 
   const status = STATUS_CONFIG[connectionStatus];
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Close sidebar on navigation
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen bg-zinc-950 text-white">
       <Toasts />
 
+      {/* Mobile hamburger */}
+      <button
+        className="fixed left-4 top-4 z-50 rounded-lg bg-zinc-800 p-2 md:hidden"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+      >
+        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          {sidebarOpen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          )}
+        </svg>
+      </button>
+
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside data-testid="sidebar" className="flex w-56 flex-col border-r border-zinc-800 bg-zinc-950">
+      <aside
+        data-testid="sidebar"
+        className={`fixed inset-y-0 left-0 z-40 flex w-56 flex-col border-r border-zinc-800 bg-zinc-950 transition-transform md:relative md:translate-x-0 ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
         {/* Profile header */}
         <button
           onClick={handleSwitchProfile}
@@ -206,7 +239,7 @@ export function AppShell() {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 p-6">
+      <main className="min-w-0 flex-1 p-4 pt-14 md:p-6 md:pt-6">
         <Outlet />
       </main>
     </div>

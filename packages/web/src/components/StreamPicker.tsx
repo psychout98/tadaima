@@ -67,7 +67,6 @@ export function StreamPicker({
   // TV state
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
-  const [selectedEpisode, setSelectedEpisode] = useState<number | null>(null);
 
   // Filters
   const [resFilter, setResFilter] = useState<Set<string>>(new Set());
@@ -89,7 +88,6 @@ export function StreamPicker({
         setSeasons(filtered);
         if (filtered.length > 0) {
           setSelectedSeason(filtered[0].seasonNumber);
-          setSelectedEpisode(1);
         }
       }
     });
@@ -112,7 +110,7 @@ export function StreamPicker({
   // Load streams
   useEffect(() => {
     if (!imdbId) return;
-    if (result.mediaType === "tv" && (selectedSeason === null || selectedEpisode === null)) return;
+    if (result.mediaType === "tv" && selectedSeason === null) return;
 
     let cancelled = false;
     setLoading(true);
@@ -122,13 +120,12 @@ export function StreamPicker({
         result.mediaType,
         imdbId,
         result.mediaType === "tv" ? selectedSeason! : undefined,
-        result.mediaType === "tv" ? selectedEpisode! : undefined,
       )
       .then((s) => { if (!cancelled) setStreams(s); })
       .catch(() => { if (!cancelled) setStreams([]); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [imdbId, result.mediaType, selectedSeason, selectedEpisode]);
+  }, [imdbId, result.mediaType, selectedSeason]);
 
   // Filtered streams
   const filtered = useMemo(() => {
@@ -223,7 +220,6 @@ export function StreamPicker({
             value={selectedSeason ?? ""}
             onChange={(e) => {
               setSelectedSeason(Number(e.target.value));
-              setSelectedEpisode(1);
             }}
             className="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white outline-none"
           >
@@ -233,31 +229,11 @@ export function StreamPicker({
               </option>
             ))}
           </select>
-          {selectedSeason !== null && (
-            <select
-              value={selectedEpisode ?? ""}
-              onChange={(e) => setSelectedEpisode(Number(e.target.value))}
-              className="rounded-lg bg-zinc-800 px-3 py-2 text-sm text-white outline-none"
-            >
-              {Array.from(
-                {
-                  length:
-                    seasons.find((s) => s.seasonNumber === selectedSeason)
-                      ?.episodeCount ?? 0,
-                },
-                (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    Episode {i + 1}
-                  </option>
-                ),
-              )}
-            </select>
-          )}
         </div>
       )}
 
       {/* Filter bar */}
-      <div data-testid="filter-resolution" className="mb-4 flex flex-wrap items-center gap-2">
+      <div data-testid="filter-resolution" className="mb-4 flex flex-wrap items-center gap-1.5 md:gap-2">
         {RESOLUTIONS.map((r) => (
           <button
             key={r}
@@ -336,8 +312,8 @@ export function StreamPicker({
         <p className="text-center text-zinc-500">No streams available.</p>
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg border border-zinc-800">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-lg border border-zinc-800">
+            <table className="w-full min-w-[500px] text-left text-sm">
               <thead className="bg-zinc-900 text-xs text-zinc-400">
                 <tr>
                   <th className="px-4 py-2">Name</th>
@@ -382,7 +358,6 @@ export function StreamPicker({
                               year: result.year ?? 0,
                               mediaType: result.mediaType,
                               ...(selectedSeason != null && { season: selectedSeason }),
-                              ...(selectedEpisode != null && { episode: selectedEpisode }),
                               magnet: s.magnet,
                               torrentName: s.title,
                               expectedSize: s.size ?? 0,

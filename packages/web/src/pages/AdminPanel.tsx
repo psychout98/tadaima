@@ -54,15 +54,21 @@ export function AdminPanel() {
   }, [adminToken, navigate]);
 
   async function loadData() {
-    try {
-      const [p, s] = await Promise.all([
-        api.profiles.list(),
-        api.settings.get(adminToken!),
-      ]);
-      setProfiles(p);
-      setSettings(s);
-    } catch {
-      addToast("error", "Failed to load data");
+    const [profilesResult, settingsResult] = await Promise.allSettled([
+      api.profiles.list(),
+      api.settings.get(adminToken!),
+    ]);
+
+    if (profilesResult.status === "fulfilled") {
+      setProfiles(profilesResult.value);
+    } else {
+      addToast("error", "Failed to load profiles");
+    }
+
+    if (settingsResult.status === "fulfilled") {
+      setSettings(settingsResult.value);
+    } else {
+      addToast("error", "Failed to load settings");
     }
   }
 

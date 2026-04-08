@@ -236,9 +236,11 @@ export const api = {
 
   streams: (type: string, imdbId: string, season?: number, episode?: number) => {
     let url = `/api/streams/${type}/${imdbId}`;
-    if (season !== undefined && episode !== undefined) {
-      url += `?season=${season}&episode=${episode}`;
-    }
+    const params = new URLSearchParams();
+    if (season !== undefined) params.set("season", String(season));
+    if (episode !== undefined) params.set("episode", String(episode));
+    const qs = params.toString();
+    if (qs) url += `?${qs}`;
     return request<
       Array<{
         title: string;
@@ -296,12 +298,20 @@ export const api = {
           id: string;
           title: string;
           mediaType: string;
+          magnet: string;
+          expectedSize: number;
           sizeBytes: number | null;
           status: string;
           error: string | null;
           retryable: boolean | null;
           startedAt: string;
           completedAt: string | null;
+          tmdbId: number;
+          imdbId: string | null;
+          year: number | null;
+          season: number | null;
+          episode: number | null;
+          torrentName: string | null;
         }>
       >(`/api/downloads${params}`, {}, token);
     },

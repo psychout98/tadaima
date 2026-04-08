@@ -4,6 +4,8 @@ import {
   downloadHistory,
   devices,
   createTimestamp,
+  createMessageId,
+  messageSchema,
 } from "@tadaima/shared";
 import { eq, and } from "drizzle-orm";
 import { getAgent, broadcastToClients } from "./pool.js";
@@ -49,6 +51,8 @@ export async function queueDownload(
         requestId,
         title,
         deviceName: device?.name ?? "Unknown",
+        mediaType: (payload as { payload?: { mediaType?: string } })?.payload?.mediaType,
+        season: (payload as { payload?: { season?: number } })?.payload?.season,
       },
     }),
   );
@@ -89,9 +93,32 @@ export async function deliverQueuedDownloads(
       continue;
     }
 
+    // Validate payload before delivery
+    const parsed = messageSchema.safeParse(entry.payload);
+    if (!parsed.success) {
+      await db
+        .update(downloadQueue)
+        .set({ status: "failed" })
+        .where(eq(downloadQueue.id, entry.id));
+
+      broadcastToClients(
+        profileId,
+        JSON.stringify({
+          id: createMessageId(),
+          type: "error",
+          timestamp: createTimestamp(),
+          payload: {
+            code: "INVALID_QUEUED_PAYLOAD",
+            detail: `Queued download expired or is invalid: ${(entry.payload as { payload?: { title?: string } })?.payload?.title ?? "Unknown"}`,
+          },
+        }),
+      );
+      continue;
+    }
+
     // Deliver to agent
     if (agent.ws.readyState === 1) {
-      agent.ws.send(JSON.stringify(entry.payload));
+      agent.ws.send(JSON.stringify(parsed.data));
       await db
         .update(downloadQueue)
         .set({ status: "delivered", deliveredAt: new Date() })

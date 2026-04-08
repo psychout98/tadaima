@@ -1,5 +1,6 @@
 import WebSocket from "ws";
-import { platform, freemem } from "node:os";
+import { platform } from "node:os";
+import { statfs } from "node:fs/promises";
 import { createMessageId, createTimestamp } from "@tadaima/shared";
 import { config } from "./config.js";
 
@@ -7,6 +8,15 @@ const HEARTBEAT_INTERVAL = 30_000;
 const MAX_BACKOFF = 30_000;
 
 type MessageHandler = (message: Record<string, unknown>) => void;
+
+async function getDiskFreeBytes(dirPath: string): Promise<number> {
+  try {
+    const stats = await statfs(dirPath);
+    return stats.bavail * stats.bsize;
+  } catch {
+    return 0;
+  }
+}
 
 export class AgentWebSocket {
   private ws: WebSocket | null = null;
@@ -18,6 +28,11 @@ export class AgentWebSocket {
   private stopped = false;
   private startTime = Date.now();
   private activeJobs = 0;
+  private mediaDir: string;
+
+  constructor() {
+    this.mediaDir = config.get("directories.movies") || config.get("directories.tv") || "/";
+  }
 
   connect(): void {
     this.stopped = false;
@@ -39,7 +54,7 @@ export class AgentWebSocket {
     this.ws.on("open", () => {
       console.log("Connected to relay");
       this.backoff = 1000;
-      this.sendHello();
+      this.sendHello().catch(() => {});
       this.startHeartbeat();
       this.drainQueue();
     });
@@ -102,7 +117,7 @@ export class AgentWebSocket {
     this.activeJobs = count;
   }
 
-  private sendHello(): void {
+  private async sendHello(): Promise<void> {
     this.send({
       id: createMessageId(),
       type: "agent:hello",
@@ -111,19 +126,19 @@ export class AgentWebSocket {
         version: "0.0.0",
         platform: platform(),
         activeJobs: this.activeJobs,
-        diskFreeBytes: freemem(),
+        diskFreeBytes: await getDiskFreeBytes(this.mediaDir),
       },
     });
   }
 
-  private sendHeartbeat(): void {
+  private async sendHeartbeat(): Promise<void> {
     this.send({
       id: createMessageId(),
       type: "agent:heartbeat",
       timestamp: createTimestamp(),
       payload: {
         activeJobs: this.activeJobs,
-        diskFreeBytes: freemem(),
+        diskFreeBytes: await getDiskFreeBytes(this.mediaDir),
         uptimeSeconds: Math.floor((Date.now() - this.startTime) / 1000),
       },
     });
@@ -132,7 +147,7 @@ export class AgentWebSocket {
   private startHeartbeat(): void {
     this.stopHeartbeat();
     this.heartbeatTimer = setInterval(
-      () => this.sendHeartbeat(),
+      () => { this.sendHeartbeat().catch(() => {}); },
       HEARTBEAT_INTERVAL,
     );
   }

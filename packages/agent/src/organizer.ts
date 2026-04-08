@@ -1,5 +1,5 @@
 import { mkdir, rename } from "node:fs/promises";
-import { dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
 import { config } from "./config.js";
 import { buildMoviePath, buildEpisodePath } from "@tadaima/shared";
 
@@ -45,12 +45,27 @@ export async function organizeFile(req: OrganizeRequest): Promise<string> {
     return destPath;
   } else {
     const tvBase = config.get("directories.tv");
+
+    // Parse SxxExx pattern from filename if episode not provided
+    const filename = basename(req.sourcePath);
+    let episodeNum = req.episode;
+    let epTitle = req.episodeTitle;
+    if (episodeNum == null) {
+      const match = filename.match(/[Ss](\d{1,2})[Ee](\d{1,2})/);
+      if (match) {
+        episodeNum = parseInt(match[2], 10);
+      }
+    }
+    if (!epTitle && episodeNum != null) {
+      epTitle = `Episode ${episodeNum}`;
+    }
+
     relativePath = buildEpisodePath(
       req.title,
       req.tmdbId,
       req.season ?? 1,
-      req.episode ?? 1,
-      req.episodeTitle ?? `Episode ${req.episode ?? 1}`,
+      episodeNum ?? 1,
+      epTitle ?? `Episode ${episodeNum ?? 1}`,
       ext,
     );
     const destPath = join(tvBase, relativePath.replace(/^TV\//, ""));

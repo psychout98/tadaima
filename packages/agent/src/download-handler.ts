@@ -97,7 +97,12 @@ export class DownloadHandler {
     this.activeJobs.set(jobId, job);
     this.ws.setActiveJobs(this.activeJobs.size);
 
-    this.sendMessage("download:accepted", { jobId, requestId });
+    this.sendMessage("download:accepted", {
+      jobId,
+      requestId,
+      title: meta.title,
+      mediaType: meta.mediaType,
+    });
 
     try {
       await this.executeDownload(job);
@@ -146,7 +151,7 @@ export class DownloadHandler {
 
     // Phase: adding
     job.phase = "adding";
-    this.sendProgress(job.jobId, "adding", 0);
+    this.sendProgress(job.jobId, "adding", 0, meta);
     console.log(`[${job.jobId}] Adding magnet to RD...`);
 
     const { id: torrentId } = await rdClient.addMagnet(meta.magnet);
@@ -157,20 +162,20 @@ export class DownloadHandler {
 
     // Phase: waiting
     job.phase = "waiting";
-    this.sendProgress(job.jobId, "waiting", 0);
+    this.sendProgress(job.jobId, "waiting", 0, meta);
     console.log(`[${job.jobId}] Waiting for RD to process...`);
 
     const links = await rdClient.pollUntilReady(
       torrentId,
       undefined,
       undefined,
-      (progress) => this.sendProgress(job.jobId, "waiting", progress),
+      (progress) => this.sendProgress(job.jobId, "waiting", progress, meta),
       signal,
     );
 
     // Phase: unrestricting
     job.phase = "unrestricting";
-    this.sendProgress(job.jobId, "unrestricting", 0);
+    this.sendProgress(job.jobId, "unrestricting", 0, meta);
     console.log(`[${job.jobId}] Unrestricting ${links.length} links...`);
 
     const unrestricted = await rdClient.unrestrictAll(links);
@@ -201,6 +206,8 @@ export class DownloadHandler {
             jobId: job.jobId,
             phase: "downloading",
             progress: pct,
+            title: meta.title,
+            mediaType: meta.mediaType,
             downloadedBytes: progress.downloadedBytes,
             totalBytes: progress.totalBytes,
             speedBps: progress.speedBps,
@@ -216,38 +223,48 @@ export class DownloadHandler {
 
     // Phase: organizing
     job.phase = "organizing";
-    this.sendProgress(job.jobId, "organizing", 0);
+    this.sendProgress(job.jobId, "organizing", 0, meta);
     console.log(`[${job.jobId}] Organizing files...`);
 
-    let finalPath = "";
+    const organizedPaths: string[] = [];
     for (const filePath of downloadedFiles) {
-      finalPath = await organizeFile({
+      const organized = await organizeFile({
         title: meta.title,
         year: meta.year,
         tmdbId: meta.tmdbId,
         mediaType: meta.mediaType,
         season: meta.season,
-        episode: meta.episode,
-        episodeTitle: meta.episodeTitle,
         sourcePath: filePath,
       });
+      organizedPaths.push(organized);
     }
 
     // Clean staging
     await rm(join(stagingDir, job.jobId), { recursive: true, force: true }).catch(() => {});
 
     // Done!
-    console.log(`[${job.jobId}] Complete: ${finalPath}`);
+    console.log(`[${job.jobId}] Complete: ${organizedPaths.length} file(s)`);
     this.sendMessage("download:completed", {
       jobId: job.jobId,
-      filePath: finalPath,
+      filePath: organizedPaths[organizedPaths.length - 1] ?? "",
+      filePaths: organizedPaths,
       finalSize: totalSize,
       _meta: meta,
     });
   }
 
-  private sendProgress(jobId: string, phase: string, progress: number): void {
-    this.sendMessage("download:progress", { jobId, phase, progress });
+  private sendProgress(
+    jobId: string,
+    phase: string,
+    progress: number,
+    meta?: { title: string; mediaType: string },
+  ): void {
+    this.sendMessage("download:progress", {
+      jobId,
+      phase,
+      progress,
+      ...(meta && { title: meta.title, mediaType: meta.mediaType }),
+    });
   }
 
   private sendMessage(type: string, payload: Record<string, unknown>): void {

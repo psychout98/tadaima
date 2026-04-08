@@ -53,6 +53,8 @@ export const cacheCheckSchema = messageEnvelopeSchema.extend({
 export const downloadAcceptedPayloadSchema = z.object({
   jobId: z.string(),
   requestId: z.string(),
+  title: z.string().optional(),
+  mediaType: z.enum(["movie", "tv"]).optional(),
 });
 
 export const downloadAcceptedSchema = messageEnvelopeSchema.extend({
@@ -64,6 +66,8 @@ export const downloadProgressPayloadSchema = z.object({
   jobId: z.string(),
   phase: z.string(),
   progress: z.number().min(0).max(100),
+  title: z.string().optional(),
+  mediaType: z.enum(["movie", "tv"]).optional(),
   downloadedBytes: z.number().optional(),
   totalBytes: z.number().optional(),
   speedBps: z.number().optional(),
@@ -78,6 +82,7 @@ export const downloadProgressSchema = messageEnvelopeSchema.extend({
 export const downloadCompletedPayloadSchema = z.object({
   jobId: z.string(),
   filePath: z.string(),
+  filePaths: z.array(z.string()).optional(),
   finalSize: z.number(),
 });
 
@@ -113,6 +118,8 @@ export const downloadQueuedPayloadSchema = z.object({
   requestId: z.string(),
   title: z.string(),
   deviceName: z.string(),
+  mediaType: z.enum(["movie", "tv"]).optional(),
+  season: z.number().optional(),
 });
 
 export const downloadQueuedSchema = messageEnvelopeSchema.extend({

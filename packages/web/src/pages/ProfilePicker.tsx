@@ -144,14 +144,12 @@ export function ProfilePicker() {
         ))}
       </div>
 
-      {adminToken && (
-        <Link
-          to="/admin"
-          className="mt-8 text-sm text-zinc-500 hover:text-zinc-300"
-        >
-          Manage
-        </Link>
-      )}
+      <Link
+        to={adminToken ? "/admin" : "/admin/login"}
+        className="mt-8 text-sm text-zinc-500 hover:text-zinc-300"
+      >
+        Manage
+      </Link>
     </div>
   );
 }

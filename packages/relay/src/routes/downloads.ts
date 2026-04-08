@@ -105,6 +105,8 @@ downloadRoutes.get("/", async (c) => {
       episode: r.episode,
       episodeTitle: r.episodeTitle,
       torrentName: r.torrentName,
+      magnet: r.magnet,
+      expectedSize: r.expectedSize,
       sizeBytes: r.sizeBytes,
       status: r.status,
       error: r.error,
