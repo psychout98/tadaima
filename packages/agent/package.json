@@ -31,7 +31,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "dev": "tsx watch src/index.ts",
     "lint": "eslint src/ --ignore-pattern src/__tests__/",
     "test": "vitest run",
@@ -46,15 +46,16 @@
     "compile:checksums": "cd dist && shasum -a 256 tadaima-agent-* > checksums.sha256"
   },
   "dependencies": {
-    "@tadaima/shared": "workspace:*",
     "conf": "^15.1.0",
     "prompts": "^2.4.2",
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@tadaima/shared": "workspace:*",
     "@types/node": "^25.5.2",
     "@types/prompts": "^2.4.9",
     "@types/ws": "^8.18.1",
+    "tsup": "^8.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^4.1.2"
