@@ -1,0 +1,8 @@
+# dotnet / MSI build artifacts
+**/bin/
+**/obj/
+**/obj/**
+**/bin/**
+# Build staging
+.staging/
+dist/

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Distribution definition for Tadaima-Setup.pkg.
+
+  This wraps the single component .pkg (Tadaima.app under /Applications)
+  into a distribution-style installer so we can attach a postinstall
+  script and restrict the install to a single user's home directory.
+-->
+<installer-gui-script minSpecVersion="2">
+    <title>Tadaima</title>
+    <organization>com.tadaima</organization>
+    <domains enable_currentUserHome="true" enable_localSystem="true"/>
+    <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+    <pkg-ref id="com.tadaima.app"
+             version="0.1.0"
+             onConclusion="none">Tadaima.pkg</pkg-ref>
+    <choices-outline>
+        <line choice="default">
+            <line choice="com.tadaima.app"/>
+        </line>
+    </choices-outline>
+    <choice id="default"/>
+    <choice id="com.tadaima.app" visible="false">
+        <pkg-ref id="com.tadaima.app"/>
+    </choice>
+</installer-gui-script>

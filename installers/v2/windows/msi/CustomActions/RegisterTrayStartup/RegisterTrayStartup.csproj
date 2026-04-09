@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- RegisterTrayStartup.exe — writes (or removes) the
+         HKCU\Software\Microsoft\Windows\CurrentVersion\Run\TadaimaTray
+         value so the tray app launches on login. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>false</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RootNamespace>Tadaima.MsiCustomActions.RegisterTrayStartup</RootNamespace>
+    <AssemblyName>RegisterTrayStartup</AssemblyName>
+  </PropertyGroup>
+</Project>

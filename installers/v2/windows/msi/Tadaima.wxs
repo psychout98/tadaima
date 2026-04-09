@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Tadaima.wxs — WiX v4 project for Tadaima-Setup.msi.
+
+    This MSI is the beta installer. It is intentionally unsigned; signing
+    is a pipeline-only change added later per CODE_SIGNING_INSTRUCTIONS.md.
+
+    Layout inside [INSTALLDIR] (default: C:\Program Files\Tadaima\):
+
+        TadaimaTray.exe               ← tray app (via Component: Tray)
+        tray-config.json              ← heartbeat interval
+        runtime\node.exe              ← bundled Node runtime
+        runtime\node_modules\npm\...  ← bundled npm
+        agent-tarball.tgz             ← offline npm install source
+        agent\                         ← created at install time by InstallAgent custom action
+        config\TadaimaConfig.exe      ← first-run config GUI
+        CustomActions\*.exe           ← install/uninstall helpers
+
+    build.ps1 passes the staged directory paths as preprocessor
+    variables; see that script for the canonical list.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <Package Name="Tadaima"
+             Manufacturer="Tadaima"
+             Version="0.1.0"
+             UpgradeCode="D8C7A12D-1E2F-4A1B-9C88-3E4F6A1F9B21"
+             Scope="perMachine"
+             InstallerVersion="500">
+
+        <MediaTemplate EmbedCab="yes" />
+        <MajorUpgrade DowngradeErrorMessage="A newer version of Tadaima is already installed." />
+
+        <!-- [INSTALLDIR] is the canonical install folder. We anchor
+             everything off ProgramFiles64Folder so the MSI respects
+             non-default system drives. -->
+        <StandardDirectory Id="ProgramFiles64Folder">
+            <Directory Id="INSTALLDIR" Name="Tadaima">
+                <Directory Id="RuntimeDir"  Name="runtime" />
+                <Directory Id="TrayDir"     Name="tray" />
+                <Directory Id="ConfigDir"   Name="config" />
+                <Directory Id="ActionsDir"  Name="CustomActions" />
+            </Directory>
+        </StandardDirectory>
+
+        <!-- Feature tree: everything ships as one feature. -->
+        <Feature Id="Main" Title="Tadaima" Level="1">
+            <ComponentGroupRef Id="TrayComponents" />
+            <ComponentGroupRef Id="ConfigGuiComponents" />
+            <ComponentGroupRef Id="RuntimeComponents" />
+            <ComponentGroupRef Id="CustomActionBinaries" />
+            <Component Id="AgentTarball" Directory="INSTALLDIR" Guid="*">
+                <File Id="AgentTarballFile" Source="$(var.StagingDir)\agent-tarball.tgz" KeyPath="yes" />
+            </Component>
+            <Component Id="TrayConfigJson" Directory="INSTALLDIR" Guid="*">
+                <File Id="TrayConfigJsonFile" Source="$(var.StagingDir)\tray-config.json" KeyPath="yes" />
+            </Component>
+        </Feature>
+
+        <!-- Native .exe custom actions. All run deferred, impersonate=no
+             (SYSTEM), so we can write to [INSTALLDIR]. RunUserConfigGui
+             hops into the user session from inside itself using
+             CreateProcessAsUser. -->
+        <Binary Id="InstallAgentBin"      SourceFile="$(var.StagingDir)\CustomActions\InstallAgent.exe" />
+        <Binary Id="RunUserConfigGuiBin"  SourceFile="$(var.StagingDir)\CustomActions\RunUserConfigGui.exe" />
+        <Binary Id="RegisterTaskBin"      SourceFile="$(var.StagingDir)\CustomActions\RegisterTask.exe" />
+        <Binary Id="RegisterTrayStartupBin" SourceFile="$(var.StagingDir)\CustomActions\RegisterTrayStartup.exe" />
+
+        <CustomAction Id="SetInstallAgentArgs"      Property="InstallAgentCA"      Value="[INSTALLDIR]" />
+        <CustomAction Id="SetRunUserConfigGuiArgs"  Property="RunUserConfigGuiCA"  Value="[INSTALLDIR]" />
+        <CustomAction Id="SetRegisterTaskArgs"      Property="RegisterTaskCA"      Value="install [INSTALLDIR]" />
+        <CustomAction Id="SetRegisterTrayStartupArgs" Property="RegisterTrayStartupCA" Value="install [INSTALLDIR]" />
+
+        <CustomAction Id="InstallAgentCA"      BinaryRef="InstallAgentBin"      ExeCommand="[INSTALLDIR]" Impersonate="no" Execute="deferred" Return="check" />
+        <CustomAction Id="RunUserConfigGuiCA"  BinaryRef="RunUserConfigGuiBin"  ExeCommand="[INSTALLDIR]" Impersonate="no" Execute="deferred" Return="check" />
+        <CustomAction Id="RegisterTaskCA"      BinaryRef="RegisterTaskBin"      ExeCommand="install [INSTALLDIR]" Impersonate="no" Execute="deferred" Return="check" />
+        <CustomAction Id="RegisterTrayStartupCA" BinaryRef="RegisterTrayStartupBin" ExeCommand="install [INSTALLDIR]" Impersonate="yes" Execute="deferred" Return="check" />
+
+        <CustomAction Id="UnregisterTaskCA"      BinaryRef="RegisterTaskBin"      ExeCommand="uninstall" Impersonate="no" Execute="deferred" Return="ignore" />
+        <CustomAction Id="UnregisterTrayStartupCA" BinaryRef="RegisterTrayStartupBin" ExeCommand="uninstall" Impersonate="yes" Execute="deferred" Return="ignore" />
+
+        <InstallExecuteSequence>
+            <!-- Install order (after files are on disk): -->
+            <Custom Action="InstallAgentCA"          After="InstallFiles" Condition="NOT Installed" />
+            <Custom Action="RunUserConfigGuiCA"      After="InstallAgentCA" Condition="NOT Installed" />
+            <Custom Action="RegisterTaskCA"          After="RunUserConfigGuiCA" Condition="NOT Installed" />
+            <Custom Action="RegisterTrayStartupCA"   After="RegisterTaskCA" Condition="NOT Installed" />
+
+            <!-- Uninstall order (before files are removed): -->
+            <Custom Action="UnregisterTrayStartupCA" Before="RemoveFiles" Condition="REMOVE=&quot;ALL&quot;" />
+            <Custom Action="UnregisterTaskCA"        Before="UnregisterTrayStartupCA" Condition="REMOVE=&quot;ALL&quot;" />
+        </InstallExecuteSequence>
+    </Package>
+
+    <!-- ComponentGroups are populated from the staged directories via
+         `heat` during build.ps1 — this keeps the wxs file from having
+         to enumerate every file in the Node runtime by hand. See
+         build.ps1 for the harvest step. -->
+    <Fragment>
+        <ComponentGroup Id="TrayComponents" Directory="TrayDir">
+            <Files Include="$(var.StagingDir)\tray\**" />
+        </ComponentGroup>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="ConfigGuiComponents" Directory="ConfigDir">
+            <Files Include="$(var.StagingDir)\config\**" />
+        </ComponentGroup>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="RuntimeComponents" Directory="RuntimeDir">
+            <Files Include="$(var.StagingDir)\runtime\**" />
+        </ComponentGroup>
+    </Fragment>
+    <Fragment>
+        <ComponentGroup Id="CustomActionBinaries" Directory="ActionsDir">
+            <Files Include="$(var.StagingDir)\CustomActions\*.exe" />
+        </ComponentGroup>
+    </Fragment>
+</Wix>

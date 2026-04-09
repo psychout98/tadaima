@@ -1,0 +1,4 @@
+{
+  "version": "1.0.11",
+  "_TODO": "Bump this to the first @psychout98/tadaima release that includes the status-file.ts module (Task 1 of INSTALLER_V2_DEV_PLAN.md). The pinned version here determines which agent tarball the installer embeds; it must contain the new AgentStatus schema or the tray / menu-bar apps will not function."
+}

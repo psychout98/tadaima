@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- RegisterTask.exe — creates or deletes the "Tadaima Agent"
+         scheduled task. Called during install (create) and uninstall
+         (delete) as an MSI custom action. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RootNamespace>Tadaima.MsiCustomActions.RegisterTask</RootNamespace>
+    <AssemblyName>RegisterTask</AssemblyName>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LaunchAgent plist template for the Tadaima agent. The postinstall
+  script renders this template into ~/Library/LaunchAgents/, substituting
+  __AGENT_BIN__ with the absolute path to Tadaima.app/Contents/Resources/agent/bin/tadaima
+  and __LOG_PATH__ with ~/Library/Logs/Tadaima/agent.log, then loads it
+  via `launchctl bootstrap gui/<uid> …`.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tadaima.agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>__AGENT_BIN__</string>
+        <string>start</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>__LOG_PATH__</string>
+
+    <key>StandardErrorPath</key>
+    <string>__LOG_PATH__</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>TADAIMA_DAEMON</key>
+        <string>1</string>
+    </dict>
+</dict>
+</plist>

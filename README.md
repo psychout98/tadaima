@@ -153,6 +153,34 @@ The agent image is published to the GitHub Container Registry. Because `setup` i
 
    The volume paths on the left side are directories on your host machine. The right side paths must match what's in `config.json`.
 
+## Desktop Install (Beta)
+
+<!-- Bump the installer-v*-beta.* tag in the links below whenever a new beta installer is published. -->
+
+Native Windows and macOS installers are available as a beta — no
+terminal required. They bundle a Node runtime, install the
+`@psychout98/tadaima` agent, and register it to start on login, all
+behind a double-click experience.
+
+**Before you download:** the beta installers are **unsigned**. Windows
+will show a SmartScreen warning and macOS will show a Gatekeeper
+warning the first time you run each installer. Both warnings are
+expected; dismissal steps are inline below. Signed, warning-free builds
+are planned for general availability — see
+[`specs/CODE_SIGNING_INSTRUCTIONS.md`](specs/CODE_SIGNING_INSTRUCTIONS.md).
+
+- **Windows (x64):** [`Tadaima-Setup.msi`](https://github.com/psychout98/tadaima/releases/download/installer-v0.1.0-beta.1/Tadaima-Setup.msi)
+  - After double-clicking the MSI, click **"More info"** on the
+    SmartScreen prompt, then **"Run anyway"**.
+- **macOS (Universal, 13+):** [`Tadaima-Setup.dmg`](https://github.com/psychout98/tadaima/releases/download/installer-v0.1.0-beta.1/Tadaima-Setup.dmg)
+  - After mounting the DMG, **right-click** (or Control-click) the
+    installer and choose **"Open"**, then **"Open"** in the
+    confirmation dialog.
+- **Verify your download:** [`checksums.sha256`](https://github.com/psychout98/tadaima/releases/download/installer-v0.1.0-beta.1/checksums.sha256)
+
+Full beta notes, including the complete walk-through and known
+limitations, live in [`installers/v2/README.md`](installers/v2/README.md).
+
 ## Agent CLI
 
 ```

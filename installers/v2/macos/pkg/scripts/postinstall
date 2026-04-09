@@ -1,0 +1,126 @@
+#!/bin/bash
+# postinstall — runs after the Tadaima.app bundle is copied into
+# /Applications by pkgbuild. Responsibilities (in order):
+#
+#   1. Select the correct Node runtime for the installing machine's arch
+#      and symlink it as `runtime` inside the bundle.
+#   2. Install @psychout98/tadaima from the bundled tarball (offline, no
+#      registry access) into Contents/Resources/agent/.
+#   3. Run the bundled TadaimaConfig.app first-run GUI, waiting for it to
+#      exit with code 0 before continuing.
+#   4. Render com.tadaima.agent.plist.template into ~/Library/LaunchAgents
+#      and bootstrap it with launchctl.
+#   5. Register Tadaima.app as a Login Item so the menu bar UI comes up
+#      on login.
+#
+# Any non-zero exit aborts the installer. We are deliberately strict
+# because a partial install is worse than a failed install.
+
+set -euo pipefail
+
+APP="/Applications/Tadaima.app"
+RES="$APP/Contents/Resources"
+USER_HOME=$(eval echo "~$USER")
+USER_UID=$(id -u "$USER")
+LOG_DIR="$USER_HOME/Library/Logs/Tadaima"
+LOG_FILE="$LOG_DIR/agent.log"
+PLIST_SRC="$RES/com.tadaima.agent.plist.template"
+PLIST_DEST="$USER_HOME/Library/LaunchAgents/com.tadaima.agent.plist"
+
+echo "[tadaima-postinstall] starting"
+
+# 1. Select correct runtime for the machine's architecture.
+ARCH=$(uname -m)
+case "$ARCH" in
+    arm64)
+        SRC_RUNTIME="runtime-arm64"
+        ;;
+    x86_64)
+        SRC_RUNTIME="runtime-x64"
+        ;;
+    *)
+        echo "[tadaima-postinstall] unsupported architecture: $ARCH" >&2
+        exit 1
+        ;;
+esac
+
+if [ ! -d "$RES/$SRC_RUNTIME" ]; then
+    echo "[tadaima-postinstall] runtime directory missing: $RES/$SRC_RUNTIME" >&2
+    exit 1
+fi
+
+# Create the arch-neutral `runtime` symlink. Remove any existing one first.
+ln -sfn "$SRC_RUNTIME" "$RES/runtime"
+
+NODE="$RES/runtime/bin/node"
+NPM_CLI="$RES/runtime/lib/node_modules/npm/bin/npm-cli.js"
+if [ ! -x "$NODE" ]; then
+    echo "[tadaima-postinstall] bundled node missing or not executable: $NODE" >&2
+    exit 1
+fi
+if [ ! -f "$NPM_CLI" ]; then
+    echo "[tadaima-postinstall] bundled npm-cli.js missing: $NPM_CLI" >&2
+    exit 1
+fi
+
+# 2. Install the pinned agent from the bundled tarball.
+TARBALL="$RES/agent-tarball.tgz"
+if [ ! -f "$TARBALL" ]; then
+    echo "[tadaima-postinstall] bundled agent tarball missing: $TARBALL" >&2
+    exit 1
+fi
+
+mkdir -p "$RES/agent"
+"$NODE" "$NPM_CLI" install -g \
+    --prefix "$RES/agent" \
+    "$TARBALL" \
+    >> "/tmp/tadaima-install.log" 2>&1
+
+AGENT_BIN="$RES/agent/bin/tadaima"
+if [ ! -x "$AGENT_BIN" ]; then
+    echo "[tadaima-postinstall] agent install failed; binary missing at $AGENT_BIN" >&2
+    exit 1
+fi
+
+# 3. Ensure log directory exists before launching the config GUI so the
+# agent's first heartbeat has somewhere to write.
+sudo -u "$USER" mkdir -p "$LOG_DIR"
+
+# 4. Run the first-run config GUI in the installing user's context,
+# waiting for it to exit. We use `sudo -u "$USER"` because the
+# postinstall itself runs as root, but the GUI needs a user session.
+CONFIG_APP="$RES/TadaimaConfig.app"
+if [ ! -d "$CONFIG_APP" ]; then
+    echo "[tadaima-postinstall] config GUI missing: $CONFIG_APP" >&2
+    exit 1
+fi
+
+# `open -W` blocks until the app terminates. launchctl asuser runs it in
+# the installing user's GUI session so NSOpenPanel etc. work correctly.
+if ! launchctl asuser "$USER_UID" sudo -u "$USER" open -W "$CONFIG_APP"; then
+    echo "[tadaima-postinstall] config GUI exited non-zero; aborting" >&2
+    exit 1
+fi
+
+# 5. Render the LaunchAgent plist template with absolute paths and copy
+# it into the user's LaunchAgents directory.
+sudo -u "$USER" mkdir -p "$(dirname "$PLIST_DEST")"
+sed \
+    -e "s#__AGENT_BIN__#$AGENT_BIN#g" \
+    -e "s#__LOG_PATH__#$LOG_FILE#g" \
+    "$PLIST_SRC" > "$PLIST_DEST"
+chown "$USER" "$PLIST_DEST"
+
+# 6. Bootstrap the LaunchAgent into the user's GUI session.
+launchctl bootstrap "gui/$USER_UID" "$PLIST_DEST" || {
+    # Non-fatal: the user can re-bootstrap later from the tray Settings
+    # window, so we just log instead of aborting.
+    echo "[tadaima-postinstall] launchctl bootstrap failed (non-fatal)" >&2
+}
+
+# 7. Login Item registration. SMAppService has no CLI — the menu bar app
+# registers itself on first launch via the Settings toggle, so this is
+# handled by the app the first time the user interacts with it.
+
+echo "[tadaima-postinstall] done"
+exit 0

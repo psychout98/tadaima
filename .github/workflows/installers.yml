@@ -1,0 +1,230 @@
+name: installers
+
+# Builds the v2 desktop installers (unsigned beta MSI + DMG).
+#
+# This workflow is intentionally separate from release.yml — the agent
+# continues to publish to npm via its own workflow, untouched. See
+# specs/INSTALLER_V2_SPEC.md Component 7 for the design.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "installer tag to cut, e.g. installer-v0.1.0-beta.1"
+        required: true
+        type: string
+  push:
+    tags:
+      - "installer-v*"
+
+permissions:
+  contents: write  # needed to create GitHub Releases
+
+jobs:
+  build-windows:
+    name: Build Windows MSI (unsigned beta)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (for shared JS helpers)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install WiX v4
+        shell: pwsh
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          installers\v2\windows\build.ps1
+
+      - name: Upload unsigned MSI
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tadaima-Setup.msi
+          path: installers/v2/windows/dist/Tadaima-Setup.msi
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS DMG (unsigned beta)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node (for shared JS helpers)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build DMG
+        run: |
+          bash installers/v2/macos/build.sh
+
+      - name: Upload unsigned DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: Tadaima-Setup.dmg
+          path: installers/v2/macos/dist/Tadaima-Setup.dmg
+          if-no-files-found: error
+
+  # Signing jobs — stubbed for beta. Activated per
+  # specs/CODE_SIGNING_INSTRUCTIONS.md by flipping `if: false` to `if:
+  # true` (no other changes needed; the downstream `publish` job's
+  # `needs:` list is updated in the same activation PR).
+
+  sign-windows:
+    name: Sign Windows MSI (GA only)
+    if: false
+    runs-on: windows-latest
+    needs: build-windows
+    environment: ga-signing
+    steps:
+      - name: Placeholder
+        shell: pwsh
+        run: |
+          # Activated by CODE_SIGNING_INSTRUCTIONS.md Part A. Will:
+          #   1. Download the unsigned MSI artifact.
+          #   2. Sign every nested .exe/.dll first, then the MSI, via
+          #      Azure Trusted Signing (SHA-256 + RFC 3161 timestamp).
+          #   3. signtool verify /pa /v every artifact; fail on error.
+          #   4. Upload the signed MSI as an artifact named
+          #      "Tadaima-Setup.msi.signed" for the publish job to pick up.
+          Write-Host "sign-windows stub — see CODE_SIGNING_INSTRUCTIONS.md Part A"
+
+  sign-macos:
+    name: Sign macOS DMG (GA only)
+    if: false
+    runs-on: macos-latest
+    needs: build-macos
+    environment: ga-signing
+    steps:
+      - name: Placeholder
+        run: |
+          # Activated by CODE_SIGNING_INSTRUCTIONS.md Part B. Will:
+          #   1. Download the unsigned DMG artifact.
+          #   2. Sign every nested Mach-O (bundled Node runtime, agent,
+          #      config GUI, menu bar app) with Developer ID Application.
+          #   3. Sign Tadaima.app with --options runtime, sign the .pkg
+          #      with Developer ID Installer, submit to notarytool
+          #      --wait, staple, wrap in .dmg, sign, notarize, staple.
+          #   4. spctl --assess + codesign --verify --deep --strict +
+          #      stapler validate; fail on error.
+          #   5. Upload the signed DMG as an artifact named
+          #      "Tadaima-Setup.dmg.signed".
+          echo "sign-macos stub — see CODE_SIGNING_INSTRUCTIONS.md Part B"
+
+  publish:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    # Beta: depend only on the unsigned builds. At GA, CODE_SIGNING_INSTRUCTIONS.md
+    # flips this to [sign-windows, sign-macos] as part of the same PR
+    # that enables the signing jobs.
+    needs:
+      - build-windows
+      - build-macos
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download MSI
+        uses: actions/download-artifact@v4
+        with:
+          name: Tadaima-Setup.msi
+          path: artifacts/msi
+
+      - name: Download DMG
+        uses: actions/download-artifact@v4
+        with:
+          name: Tadaima-Setup.dmg
+          path: artifacts/dmg
+
+      - name: Compute checksums
+        run: |
+          mkdir -p artifacts/out
+          cp artifacts/msi/Tadaima-Setup.msi artifacts/out/Tadaima-Setup.msi
+          cp artifacts/dmg/Tadaima-Setup.dmg artifacts/out/Tadaima-Setup.dmg
+          cd artifacts/out
+          sha256sum Tadaima-Setup.msi Tadaima-Setup.dmg > checksums.sha256
+          cat checksums.sha256
+
+      - name: Resolve release tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF##*/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Determine prerelease flag
+        id: prerelease
+        run: |
+          tag="${{ steps.tag.outputs.tag }}"
+          if echo "$tag" | grep -Eq "\-(beta|rc|alpha)" ; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate release body
+        id: body
+        run: |
+          agent_version=$(python3 -c "import json; print(json.load(open('installers/v2/shared/agent-version.json'))['version'])")
+          node_version=$(python3 -c "import json; print(json.load(open('installers/v2/shared/node-runtime-versions.json'))['version'])")
+          cat > release-body.md <<EOF
+          # Tadaima Desktop Installer — ${{ steps.tag.outputs.tag }}
+
+          Pinned agent:   \`@psychout98/tadaima@${agent_version}\`
+          Bundled Node:   \`v${node_version}\`
+
+          ## Downloads
+
+          - \`Tadaima-Setup.msi\` — Windows 10/11 (x64)
+          - \`Tadaima-Setup.dmg\` — macOS 13+ (Universal)
+          - \`checksums.sha256\` — SHA-256 hashes for both artifacts
+
+          ## Beta warning dismissal
+
+          **Windows:** Double-click the MSI. When SmartScreen appears, click
+          "More info", then "Run anyway".
+
+          **macOS:** Mount the DMG, then right-click (or Control-click) the
+          .pkg inside and choose "Open", then "Open" in the confirmation
+          dialog.
+
+          Signed, warning-free builds are planned for general availability.
+          See [\`installers/v2/README.md\`](https://github.com/${{ github.repository }}/blob/main/installers/v2/README.md)
+          for more detail.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          body_path: release-body.md
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease }}
+          files: |
+            artifacts/out/Tadaima-Setup.msi
+            artifacts/out/Tadaima-Setup.dmg
+            artifacts/out/checksums.sha256
+
+      - name: Summary
+        run: |
+          {
+            echo "## Tadaima installer ${{ steps.tag.outputs.tag }}"
+            echo ""
+            echo "- Tadaima-Setup.msi"
+            echo "- Tadaima-Setup.dmg"
+            echo "- checksums.sha256"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- RunUserConfigGui.exe — launches TadaimaConfig.exe in the
+         installing user's context (not SYSTEM) using CreateProcessAsUser,
+         then waits for it to exit and propagates the exit code back to
+         the MSI. Necessary because MSI deferred custom actions run as
+         SYSTEM by default, and a SYSTEM-context GUI has no visible desktop. -->
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <RootNamespace>Tadaima.MsiCustomActions.RunUserConfigGui</RootNamespace>
+    <AssemblyName>RunUserConfigGui</AssemblyName>
+  </PropertyGroup>
+</Project>

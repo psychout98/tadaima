@@ -30,7 +30,8 @@ async function main() {
       const { TUI } = await import("./tui.js");
       const { shouldCheckNow, checkForUpdate, applyUpdate, logUpdateAdvisory } =
         await import("./updater.js");
-      const { writeStatus, removeStatus } = await import("./status-writer.js");
+      const { writeStatusFile, removeStatusFile, STATUS_HEARTBEAT_INTERVAL_MS } =
+        await import("./status-file.js");
 
       const ws = new AgentWebSocket();
       const handler = new DownloadHandler(ws);
@@ -38,7 +39,6 @@ async function main() {
 
       // Track connection state for status file (ws internals are private)
       let wsConnected = false;
-      let pendingUpdateVersion: string | null = null;
 
       // Non-blocking update check on startup
       let pendingUpdate: Awaited<ReturnType<typeof checkForUpdate>> = null;
@@ -55,7 +55,6 @@ async function main() {
           );
         }
         pendingUpdate = null;
-        pendingUpdateVersion = null;
       };
 
       const runUpdateCheck = async () => {
@@ -70,7 +69,6 @@ async function main() {
               return;
             }
             pendingUpdate = result;
-            pendingUpdateVersion = result.version;
             await tryApplyUpdate();
           }
         } catch (err) {
@@ -106,32 +104,35 @@ async function main() {
 
       ws.connect();
 
-      // Write status file every 10 seconds for tray/menu bar apps
+      // Write status file on each heartbeat for the tray / menu bar apps.
       const { config: agentConfig } = await import("./config.js");
-      const statusInterval = setInterval(() => {
-        writeStatus({
-          pid: process.pid,
-          version: pkg.version,
-          connected: wsConnected,
-          relay: agentConfig.get("relay"),
-          deviceName: agentConfig.get("deviceName"),
-          activeDownloads: handler.activeCount,
-          lastHeartbeat: new Date().toISOString(),
-          updateAvailable: pendingUpdateVersion,
-        });
-      }, 10_000);
-
-      // Write initial status immediately
-      writeStatus({
-        pid: process.pid,
+      const snapshotStatus = (connected: boolean) => ({
         version: pkg.version,
-        connected: false,
-        relay: agentConfig.get("relay"),
+        pid: process.pid,
+        connected,
+        relayUrl: agentConfig.get("relay"),
+        deviceId: agentConfig.get("deviceId"),
         deviceName: agentConfig.get("deviceName"),
-        activeDownloads: 0,
+        activeDownloads: handler.activeCount,
         lastHeartbeat: new Date().toISOString(),
-        updateAvailable: null,
       });
+      const writeStatusSafe = (connected: boolean) => {
+        writeStatusFile(snapshotStatus(connected)).catch((err) => {
+          // A failed status write must never crash the heartbeat loop.
+          console.warn(
+            "status.json write failed:",
+            err instanceof Error ? err.message : err,
+          );
+        });
+      };
+
+      const statusInterval = setInterval(() => {
+        writeStatusSafe(wsConnected);
+      }, STATUS_HEARTBEAT_INTERVAL_MS);
+
+      // Write an initial status file immediately so tray apps have
+      // something to read before the first heartbeat tick lands.
+      writeStatusSafe(false);
 
       // Use TUI unless running as daemon
       if (!process.env.TADAIMA_DAEMON) {
@@ -141,7 +142,7 @@ async function main() {
       process.on("SIGINT", () => {
         clearInterval(updateInterval);
         clearInterval(statusInterval);
-        removeStatus();
+        removeStatusFile();
         tui.stop();
         ws.stop();
         process.exit(0);
@@ -149,7 +150,7 @@ async function main() {
       process.on("SIGTERM", () => {
         clearInterval(updateInterval);
         clearInterval(statusInterval);
-        removeStatus();
+        removeStatusFile();
         tui.stop();
         ws.stop();
         process.exit(0);
