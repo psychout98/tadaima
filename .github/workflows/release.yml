@@ -141,6 +141,12 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # WinUI 3's MrtCore targets need MSBuild tasks that only exist
+      # inside a Visual Studio install (UWP workload). build.ps1 invokes
+      # msbuild.exe directly so those tasks resolve; this action puts
+      # VS 2022's msbuild.exe on PATH.
+      - uses: microsoft/setup-msbuild@v2
+
       - name: Install WiX v4
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2

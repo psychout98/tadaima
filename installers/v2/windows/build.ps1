@@ -32,13 +32,17 @@ $RepoRoot  = Resolve-Path (Join-Path $Root "..\..\..")
 $Shared    = Join-Path $RepoRoot "installers\v2\shared"
 $Staging   = Join-Path $Root ".staging"
 
-# Pin dotnet to the .NET 8 SDK via global.json. GitHub's windows-latest
-# image ships a .NET 10 preview SDK, which `dotnet publish` would
-# otherwise prefer over the 8.0.x SDK installed by setup-dotnet, and
-# WindowsAppSDK 1.6's MrtCore targets don't load under the 10.x SDK
-# layout. global.json lives next to this script; Set-Location makes
-# dotnet's upward-search find it.
-Set-Location $Root
+# Build everything with Visual Studio MSBuild, not the dotnet CLI.
+# WinUI 3's MrtCore.PriGen.targets loads Microsoft.Build.Packaging.Pri.Tasks.dll
+# via a UsingTask whose path resolves relative to the MSBuild install
+# root. That DLL only exists inside a VS install with the UWP workload —
+# it is not present in the standalone .NET SDK layout that `dotnet publish`
+# uses. Since GitHub's windows-latest runner ships VS 2022 with UWP,
+# running msbuild.exe from VS finds the DLL and the build succeeds.
+# The plain-console custom actions go through msbuild too for consistency;
+# they build fine either way. See INSTALLER_V2_SPEC.md Component 7.
+$Msbuild = (Get-Command msbuild.exe -ErrorAction Stop).Source
+Write-Host "[build.ps1] using msbuild: $Msbuild"
 
 Write-Host "[build.ps1] cleaning $Staging and $OutputDir"
 if (Test-Path $Staging)   { Remove-Item $Staging   -Recurse -Force }
@@ -73,24 +77,38 @@ $heartbeat = ($heartbeatMatch.Matches[0].Groups[1].Value -replace "_", "")
     ConvertTo-Json |
     Out-File -Encoding utf8 (Join-Path $Staging "tray-config.json")
 
-# 4. Build the config GUI and tray app
-Write-Host "[build.ps1] publishing TadaimaConfig"
-& dotnet publish "$Root\config-gui\TadaimaConfig.csproj" `
-    -c $Configuration `
-    -r win-x64 `
-    --self-contained true `
-    -o "$Staging\config"
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish config-gui failed" }
+# Helper: publish a .csproj with VS MSBuild. PublishDir needs a trailing
+# backslash or MSBuild treats the final segment as a file name.
+function Invoke-MsbuildPublish {
+    param(
+        [Parameter(Mandatory)][string]$Project,
+        [Parameter(Mandatory)][string]$PublishDir,
+        [string]$Label = $Project
+    )
+    if (-not $PublishDir.EndsWith("\")) { $PublishDir += "\" }
+    Write-Host "[build.ps1] msbuild publish $Label -> $PublishDir"
+    & $Msbuild $Project `
+        "/t:Restore;Publish" `
+        "/p:Configuration=$Configuration" `
+        "/p:RuntimeIdentifier=win-x64" `
+        "/p:SelfContained=true" `
+        "/p:PublishDir=$PublishDir" `
+        /nologo `
+        /v:minimal
+    if ($LASTEXITCODE -ne 0) { throw "msbuild publish failed: $Label" }
+}
 
-Write-Host "[build.ps1] publishing TadaimaTray"
-& dotnet publish "$Root\tray-app\TadaimaTray.csproj" `
-    -c $Configuration `
-    -r win-x64 `
-    --self-contained true `
-    -o "$Staging\tray"
-if ($LASTEXITCODE -ne 0) { throw "dotnet publish tray-app failed" }
+# 4. Build the config GUI and tray app (WinUI 3 — requires VS MSBuild)
+Invoke-MsbuildPublish -Project "$Root\config-gui\TadaimaConfig.csproj" `
+                      -PublishDir "$Staging\config" `
+                      -Label "TadaimaConfig"
 
-# 5. Build the four MSI custom actions
+Invoke-MsbuildPublish -Project "$Root\tray-app\TadaimaTray.csproj" `
+                      -PublishDir "$Staging\tray" `
+                      -Label "TadaimaTray"
+
+# 5. Build the four MSI custom actions (plain .NET 8 console apps;
+# PublishSingleFile is set in each .csproj so we don't pass it here)
 $caDir = Join-Path $Staging "CustomActions"
 New-Item -ItemType Directory -Path $caDir | Out-Null
 $customActions = @(
@@ -100,15 +118,10 @@ $customActions = @(
     @{ Name = "RegisterTrayStartup"; Proj = "$Root\msi\CustomActions\RegisterTrayStartup\RegisterTrayStartup.csproj" }
 )
 foreach ($ca in $customActions) {
-    Write-Host "[build.ps1] publishing $($ca.Name)"
     $publishDir = Join-Path $Staging "ca-$($ca.Name)"
-    & dotnet publish $ca.Proj `
-        -c $Configuration `
-        -r win-x64 `
-        --self-contained true `
-        /p:PublishSingleFile=true `
-        -o $publishDir
-    if ($LASTEXITCODE -ne 0) { throw "dotnet publish $($ca.Name) failed" }
+    Invoke-MsbuildPublish -Project $ca.Proj `
+                          -PublishDir $publishDir `
+                          -Label $ca.Name
     Copy-Item -Path (Join-Path $publishDir "$($ca.Name).exe") -Destination $caDir
 }
 
