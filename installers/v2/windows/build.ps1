@@ -79,6 +79,15 @@ $heartbeat = ($heartbeatMatch.Matches[0].Groups[1].Value -replace "_", "")
 
 # Helper: publish a .csproj with VS MSBuild. PublishDir needs a trailing
 # backslash or MSBuild treats the final segment as a file name.
+#
+# Restore and Publish MUST be two separate msbuild invocations. WinUI 3's
+# XAML compiler and MrtCore targets are imported via the WindowsAppSDK
+# PackageReference; those imports only take effect on a fresh MSBuild
+# evaluation *after* restore has landed the package on disk. Running
+# `/t:Restore;Publish` in a single invocation evaluates the project once,
+# before restore, so the XAML targets aren't loaded and
+# `InitializeComponent` / x:Name fields never get generated — the build
+# then fails with dozens of "does not exist in the current context" errors.
 function Invoke-MsbuildPublish {
     param(
         [Parameter(Mandatory)][string]$Project,
@@ -86,9 +95,19 @@ function Invoke-MsbuildPublish {
         [string]$Label = $Project
     )
     if (-not $PublishDir.EndsWith("\")) { $PublishDir += "\" }
+
+    Write-Host "[build.ps1] msbuild restore $Label"
+    & $Msbuild $Project `
+        "/t:Restore" `
+        "/p:Configuration=$Configuration" `
+        "/p:RuntimeIdentifier=win-x64" `
+        /nologo `
+        /v:minimal
+    if ($LASTEXITCODE -ne 0) { throw "msbuild restore failed: $Label" }
+
     Write-Host "[build.ps1] msbuild publish $Label -> $PublishDir"
     & $Msbuild $Project `
-        "/t:Restore;Publish" `
+        "/t:Publish" `
         "/p:Configuration=$Configuration" `
         "/p:RuntimeIdentifier=win-x64" `
         "/p:SelfContained=true" `
