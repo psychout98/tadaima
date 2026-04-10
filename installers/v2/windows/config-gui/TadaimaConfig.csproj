@@ -12,6 +12,12 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
+    <!-- Windows App SDK 1.5 ships runtime targets that reference the
+         legacy win10-* RIDs, which .NET 8 removed from its portable RID
+         graph. Opt back into the legacy RID graph so those references
+         resolve. See https://learn.microsoft.com/en-us/dotnet/core/compatibility/deployment/8.0/rid-asset-list
+         Remove this once we're on WindowsAppSDK 1.6+. -->
+    <UseRidGraph>true</UseRidGraph>
     <PublishSingleFile>false</PublishSingleFile>
     <!-- Single-file publish is not supported with WinUI 3 + WindowsAppSDK;
          we ship a multi-file publish and bundle the whole folder into the
