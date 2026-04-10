@@ -53,11 +53,25 @@ async function main() {
 
   // `npm pack <pkg>@<version>` writes a .tgz into the current working
   // directory. We invoke it with cwd=outDir so the tarball lands there.
+  //
+  // `shell: true` is required on Windows: since the CVE-2024-27980 patch
+  // (Node 18.20.2 / 20.12.2, April 2024), spawning a .cmd/.bat file
+  // without a shell fails with EINVAL before the child ever runs. Using
+  // the shell routes the call through cmd.exe, which is the supported
+  // post-patch way to invoke npm's .cmd shim. Enabling it unconditionally
+  // keeps the POSIX path equivalent.
   const result = spawnSync(
-    process.platform === "win32" ? "npm.cmd" : "npm",
+    "npm",
     ["pack", `@psychout98/tadaima@${version}`, "--silent"],
-    { cwd: outDir, stdio: ["ignore", "pipe", "inherit"] },
+    {
+      cwd: outDir,
+      stdio: ["ignore", "pipe", "inherit"],
+      shell: true,
+    },
   );
+  if (result.error) {
+    throw new Error(`npm pack could not start: ${result.error.message}`);
+  }
   if (result.status !== 0) {
     throw new Error(`npm pack failed with exit code ${result.status}`);
   }

@@ -12,7 +12,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
+# ROOT is installers/v2/macos; go up three levels to reach the repo root.
+REPO_ROOT="$(cd "$ROOT/../../.." && pwd)"
 SHARED="$REPO_ROOT/installers/v2/shared"
 DIST="$ROOT/dist"
 STAGING="$ROOT/.build"
