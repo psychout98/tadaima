@@ -32,6 +32,14 @@ $RepoRoot  = Resolve-Path (Join-Path $Root "..\..\..")
 $Shared    = Join-Path $RepoRoot "installers\v2\shared"
 $Staging   = Join-Path $Root ".staging"
 
+# Pin dotnet to the .NET 8 SDK via global.json. GitHub's windows-latest
+# image ships a .NET 10 preview SDK, which `dotnet publish` would
+# otherwise prefer over the 8.0.x SDK installed by setup-dotnet, and
+# WindowsAppSDK 1.6's MrtCore targets don't load under the 10.x SDK
+# layout. global.json lives next to this script; Set-Location makes
+# dotnet's upward-search find it.
+Set-Location $Root
+
 Write-Host "[build.ps1] cleaning $Staging and $OutputDir"
 if (Test-Path $Staging)   { Remove-Item $Staging   -Recurse -Force }
 if (Test-Path $OutputDir) { Remove-Item $OutputDir -Recurse -Force }
