@@ -20,11 +20,12 @@ export interface AgentStatus {
   version: string;
   pid: number;
   connected: boolean;
-  relayUrl: string;
+  relay: string;
   deviceId: string;
   deviceName: string;
   activeDownloads: number;
   lastHeartbeat: string;
+  updateAvailable: string | null;
 }
 
 /**

@@ -11,11 +11,11 @@
 
     <Media Id="1" Cabinet="tadaima.cab" EmbedCab="yes" />
 
-    <!-- Properties collected from the UI -->
-    <Property Id="RELAY_URL" Value="" />
-    <Property Id="PAIRING_CODE" Value="" />
-    <Property Id="MOVIES_DIR" Value="" />
-    <Property Id="TV_DIR" Value="" />
+    <!-- Properties collected from the UI (or passed on the command line for silent install) -->
+    <Property Id="RELAY_URL" Value="" Secure="yes" />
+    <Property Id="PAIRING_CODE" Value="" Secure="yes" />
+    <Property Id="MOVIES_DIR" Value="" Secure="yes" />
+    <Property Id="TV_DIR" Value="" Secure="yes" />
 
     <!-- Install directory -->
     <StandardDirectory Id="ProgramFiles64Folder">
@@ -94,9 +94,72 @@
       <ComponentRef Id="StartMenuShortcut" />
     </Feature>
 
-    <!-- UI -->
+    <!-- UI: Custom dialog sequence with configuration page -->
     <ui:WixUI Id="WixUI_Mondo" />
     <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+
+    <UI>
+      <!-- Configuration dialog — collects relay URL, pairing code, and media directories -->
+      <Dialog Id="ConfigDlg" Width="370" Height="270" Title="Tadaima Agent Configuration">
+        <Control Id="Title" Type="Text" X="15" Y="6" Width="200" Height="15"
+                 Transparent="yes" NoPrefix="yes" Text="{\WixUI_Font_Title}Configuration" />
+        <Control Id="Description" Type="Text" X="25" Y="23" Width="280" Height="15"
+                 Transparent="yes" NoPrefix="yes"
+                 Text="Enter your relay details and media directories." />
+        <Control Id="BannerLine" Type="Line" X="0" Y="44" Width="370" Height="0" />
+
+        <Control Id="RelayLabel" Type="Text" X="20" Y="60" Width="100" Height="13"
+                 NoPrefix="yes" Text="Relay URL:" />
+        <Control Id="RelayEdit" Type="Edit" X="20" Y="74" Width="330" Height="18"
+                 Property="RELAY_URL" Text="{80}" />
+
+        <Control Id="CodeLabel" Type="Text" X="20" Y="100" Width="200" Height="13"
+                 NoPrefix="yes" Text="Pairing Code (from the web app):" />
+        <Control Id="CodeEdit" Type="Edit" X="20" Y="114" Width="330" Height="18"
+                 Property="PAIRING_CODE" Text="{6}" />
+
+        <Control Id="MoviesLabel" Type="Text" X="20" Y="140" Width="100" Height="13"
+                 NoPrefix="yes" Text="Movies directory:" />
+        <Control Id="MoviesEdit" Type="PathEdit" X="20" Y="154" Width="280" Height="18"
+                 Property="MOVIES_DIR" />
+        <Control Id="MoviesBrowse" Type="PushButton" X="305" Y="154" Width="45" Height="18"
+                 Text="Browse">
+          <Publish Property="_BrowseProperty" Value="MOVIES_DIR" Order="1">1</Publish>
+          <Publish Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+        </Control>
+
+        <Control Id="TvLabel" Type="Text" X="20" Y="180" Width="100" Height="13"
+                 NoPrefix="yes" Text="TV Shows directory:" />
+        <Control Id="TvEdit" Type="PathEdit" X="20" Y="194" Width="280" Height="18"
+                 Property="TV_DIR" />
+        <Control Id="TvBrowse" Type="PushButton" X="305" Y="194" Width="45" Height="18"
+                 Text="Browse">
+          <Publish Property="_BrowseProperty" Value="TV_DIR" Order="1">1</Publish>
+          <Publish Event="SpawnDialog" Value="BrowseDlg" Order="2">1</Publish>
+        </Control>
+
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="370" Height="0" />
+
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17"
+                 Text="&amp;Back">
+          <Publish Event="NewDialog" Value="LicenseAgreementDlg">1</Publish>
+        </Control>
+        <Control Id="Next" Type="PushButton" X="236" Y="243" Width="56" Height="17"
+                 Default="yes" Text="&amp;Next">
+          <Publish Event="NewDialog" Value="VerifyReadyDlg">1</Publish>
+        </Control>
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17"
+                 Cancel="yes" Text="Cancel">
+          <Publish Event="SpawnDialog" Value="CancelDlg">1</Publish>
+        </Control>
+      </Dialog>
+
+      <!-- Insert ConfigDlg between LicenseAgreementDlg and VerifyReadyDlg -->
+      <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog"
+               Value="ConfigDlg">LicenseAccepted = "1"</Publish>
+      <Publish Dialog="VerifyReadyDlg" Control="Back" Event="NewDialog"
+               Value="ConfigDlg">1</Publish>
+    </UI>
 
   </Package>
 </Wix>

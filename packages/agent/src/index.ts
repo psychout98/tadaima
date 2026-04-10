@@ -110,11 +110,12 @@ async function main() {
         version: pkg.version,
         pid: process.pid,
         connected,
-        relayUrl: agentConfig.get("relay"),
+        relay: agentConfig.get("relay"),
         deviceId: agentConfig.get("deviceId"),
         deviceName: agentConfig.get("deviceName"),
         activeDownloads: handler.activeCount,
         lastHeartbeat: new Date().toISOString(),
+        updateAvailable: pendingUpdate?.version ?? null,
       });
       const writeStatusSafe = (connected: boolean) => {
         writeStatusFile(snapshotStatus(connected)).catch((err) => {
