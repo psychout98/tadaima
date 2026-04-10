@@ -5,15 +5,15 @@ import Foundation
 /// agent reads this file via the `conf` npm package which has fixed
 /// conventions per platform.
 ///
-/// On macOS (darwin), the `conf` package uses the Application Support
-/// directory by default. We write there.
+/// On macOS (darwin), the `conf` npm package (v15) uses `env-paths` with
+/// suffix "nodejs", resolving to ~/Library/Preferences/tadaima-nodejs/.
 enum AgentConfigWriter {
     static func configURL() -> URL {
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home
             .appendingPathComponent("Library")
-            .appendingPathComponent("Application Support")
-            .appendingPathComponent("tadaima")
+            .appendingPathComponent("Preferences")
+            .appendingPathComponent("tadaima-nodejs")
             .appendingPathComponent("config.json")
     }
 
@@ -26,6 +26,7 @@ enum AgentConfigWriter {
         deviceToken: String,
         deviceName: String,
         profileName: String,
+        rdApiKey: String,
         movies: String,
         tv: String
     ) throws {
@@ -58,9 +59,14 @@ enum AgentConfigWriter {
         }
         existing["directories"] = directories
 
-        if existing["realDebrid"] == nil {
-            existing["realDebrid"] = ["apiKey": ""]
+        var realDebrid = (existing["realDebrid"] as? [String: Any]) ?? [:]
+        if !rdApiKey.isEmpty {
+            realDebrid["apiKey"] = rdApiKey
         }
+        if realDebrid["apiKey"] == nil {
+            realDebrid["apiKey"] = ""
+        }
+        existing["realDebrid"] = realDebrid
         if existing["maxConcurrentDownloads"] == nil {
             existing["maxConcurrentDownloads"] = 2
         }

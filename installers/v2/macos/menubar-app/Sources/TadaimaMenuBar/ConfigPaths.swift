@@ -3,9 +3,10 @@ import Foundation
 /// Resolves the directory where the Tadaima agent stores its configuration
 /// files (`config.json`, `status.json`, `tadaima.pid`).
 ///
-/// The agent uses the `conf` npm package under the project name "tadaima",
-/// which on macOS writes to `~/Library/Application Support/tadaima/`. We
-/// check that location first. For developers running the agent in unusual
+/// The agent uses the `conf` npm package (v15) under the project name
+/// "tadaima", which on macOS resolves via env-paths to
+/// `~/Library/Preferences/tadaima-nodejs/`. We check that location first.
+/// For developers running the agent in unusual
 /// environments we also accept the XDG-style `$XDG_CONFIG_HOME/tadaima/`
 /// and `~/.config/tadaima/` fallbacks — same order the agent tries.
 ///
@@ -31,23 +32,32 @@ enum ConfigPaths {
         var dirs: [URL] = []
         let home = FileManager.default.homeDirectoryForCurrentUser
 
-        // macOS canonical (conf package default on darwin)
+        // macOS canonical (conf@15 default on darwin: env-paths "config" + suffix "nodejs")
         dirs.append(
             home
                 .appendingPathComponent("Library")
-                .appendingPathComponent("Application Support")
-                .appendingPathComponent("tadaima")
+                .appendingPathComponent("Preferences")
+                .appendingPathComponent("tadaima-nodejs")
         )
 
-        // XDG fallback
+        // XDG fallback (matches env-paths linux behavior with suffix)
         if let xdg = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"], !xdg.isEmpty {
-            dirs.append(URL(fileURLWithPath: xdg).appendingPathComponent("tadaima"))
+            dirs.append(URL(fileURLWithPath: xdg).appendingPathComponent("tadaima-nodejs"))
         }
 
         // ~/.config fallback
         dirs.append(
             home
                 .appendingPathComponent(".config")
+                .appendingPathComponent("tadaima-nodejs")
+        )
+
+        // Legacy: check old path in case a pre-fix install wrote config here.
+        // This lets existing users upgrade without re-pairing.
+        dirs.append(
+            home
+                .appendingPathComponent("Library")
+                .appendingPathComponent("Application Support")
                 .appendingPathComponent("tadaima")
         )
 

@@ -20,8 +20,15 @@ set -euo pipefail
 
 APP="/Applications/Tadaima.app"
 RES="$APP/Contents/Resources"
-USER_HOME=$(eval echo "~$USER")
-USER_UID=$(id -u "$USER")
+# The postinstall runs as root. $USER is "root", not the logged-in
+# user. Resolve the real GUI user from /dev/console ownership.
+REAL_USER=$(/usr/bin/stat -f "%Su" /dev/console)
+if [ "$REAL_USER" = "root" ] || [ -z "$REAL_USER" ]; then
+    echo "[tadaima-postinstall] could not determine GUI user" >&2
+    exit 1
+fi
+USER_HOME=$(eval echo "~$REAL_USER")
+USER_UID=$(id -u "$REAL_USER")
 LOG_DIR="$USER_HOME/Library/Logs/Tadaima"
 LOG_FILE="$LOG_DIR/agent.log"
 PLIST_SRC="$RES/com.tadaima.agent.plist.template"
@@ -84,10 +91,10 @@ fi
 
 # 3. Ensure log directory exists before launching the config GUI so the
 # agent's first heartbeat has somewhere to write.
-sudo -u "$USER" mkdir -p "$LOG_DIR"
+sudo -u "$REAL_USER" mkdir -p "$LOG_DIR"
 
 # 4. Run the first-run config GUI in the installing user's context,
-# waiting for it to exit. We use `sudo -u "$USER"` because the
+# waiting for it to exit. We use `sudo -u "$REAL_USER"` because the
 # postinstall itself runs as root, but the GUI needs a user session.
 CONFIG_APP="$RES/TadaimaConfig.app"
 if [ ! -d "$CONFIG_APP" ]; then
@@ -97,19 +104,19 @@ fi
 
 # `open -W` blocks until the app terminates. launchctl asuser runs it in
 # the installing user's GUI session so NSOpenPanel etc. work correctly.
-if ! launchctl asuser "$USER_UID" sudo -u "$USER" open -W "$CONFIG_APP"; then
+if ! launchctl asuser "$USER_UID" sudo -u "$REAL_USER" open -W "$CONFIG_APP"; then
     echo "[tadaima-postinstall] config GUI exited non-zero; aborting" >&2
     exit 1
 fi
 
 # 5. Render the LaunchAgent plist template with absolute paths and copy
 # it into the user's LaunchAgents directory.
-sudo -u "$USER" mkdir -p "$(dirname "$PLIST_DEST")"
+sudo -u "$REAL_USER" mkdir -p "$(dirname "$PLIST_DEST")"
 sed \
     -e "s#__AGENT_BIN__#$AGENT_BIN#g" \
     -e "s#__LOG_PATH__#$LOG_FILE#g" \
     "$PLIST_SRC" > "$PLIST_DEST"
-chown "$USER" "$PLIST_DEST"
+chown "$REAL_USER" "$PLIST_DEST"
 
 # 6. Bootstrap the LaunchAgent into the user's GUI session.
 launchctl bootstrap "gui/$USER_UID" "$PLIST_DEST" || {
