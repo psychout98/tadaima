@@ -4,12 +4,14 @@
 
   This wraps the single component .pkg (Tadaima.app under /Applications)
   into a distribution-style installer so we can attach a postinstall
-  script and restrict the install to a single user's home directory.
+  script. The app installs to /Applications (system domain only) because
+  the postinstall script hardcodes that path for runtime setup, service
+  registration, and config GUI launch.
 -->
 <installer-gui-script minSpecVersion="2">
     <title>Tadaima</title>
     <organization>com.tadaima</organization>
-    <domains enable_currentUserHome="true" enable_localSystem="true"/>
+    <domains enable_localSystem="true"/>
     <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
     <pkg-ref id="com.tadaima.app"
              version="0.1.0"
