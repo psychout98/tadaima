@@ -126,6 +126,55 @@ jobs:
             packages/agent/dist/tadaima-agent-*
             packages/agent/dist/checksums.sha256
 
+  build-windows-installer:
+    name: Build Windows MSI (unsigned beta)
+    needs: ci
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install WiX v4
+        shell: pwsh
+        run: dotnet tool install --global wix --version 5.0.2
+
+      - name: Build MSI
+        shell: pwsh
+        run: installers\v2\windows\build.ps1
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-msi
+          path: installers/v2/windows/dist/Tadaima-Setup.msi
+          if-no-files-found: error
+
+  build-macos-installer:
+    name: Build macOS DMG (unsigned beta)
+    needs: ci
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build DMG
+        run: bash installers/v2/macos/build.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer-dmg
+          path: installers/v2/macos/dist/Tadaima-Setup.dmg
+          if-no-files-found: error
+
   npm-publish:
     needs: ci
     runs-on: ubuntu-latest
@@ -170,7 +219,14 @@ jobs:
         run: cd packages/agent && npm publish --access public --provenance
 
   github-release:
-    needs: [ci, docker-relay, docker-agent, build-binaries, npm-publish]
+    needs:
+      - ci
+      - docker-relay
+      - docker-agent
+      - build-binaries
+      - build-windows-installer
+      - build-macos-installer
+      - npm-publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -181,6 +237,23 @@ jobs:
         with:
           name: agent-binaries
           path: release-assets/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-msi
+          path: release-assets/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: installer-dmg
+          path: release-assets/
+
+      - name: Regenerate combined checksums
+        run: |
+          cd release-assets
+          rm -f checksums.sha256
+          sha256sum tadaima-agent-* Tadaima-Setup.msi Tadaima-Setup.dmg > checksums.sha256
+          cat checksums.sha256
 
       - name: Generate changelog
         id: changelog
@@ -199,7 +272,17 @@ jobs:
         with:
           files: release-assets/*
           body: |
-            ## Downloads
+            ## Desktop Installers (Beta, unsigned)
+
+            | Platform | Installer |
+            |---|---|
+            | Windows 10/11 (x64) | [Tadaima-Setup.msi](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Tadaima-Setup.msi) |
+            | macOS 13+ (Universal) | [Tadaima-Setup.dmg](https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/Tadaima-Setup.dmg) |
+
+            These bundle a Node runtime, install the agent, and register it to start on login.
+            See [`installers/v2/README.md`](https://github.com/${{ github.repository }}/blob/main/installers/v2/README.md) for warning-dismissal steps.
+
+            ## Agent Binaries
 
             | Platform | Binary |
             |---|---|
