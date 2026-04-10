@@ -128,7 +128,7 @@ jobs:
 
   build-windows-installer:
     name: Build Windows MSI (unsigned beta)
-    needs: ci
+    needs: [ci, npm-publish]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -163,7 +163,7 @@ jobs:
 
   build-macos-installer:
     name: Build macOS DMG (unsigned beta)
-    needs: ci
+    needs: [ci, npm-publish]
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

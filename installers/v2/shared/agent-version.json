@@ -1,4 +1,4 @@
 {
-  "version": "1.0.11",
-  "_TODO": "Bump this to the first @psychout98/tadaima release that includes the status-file.ts module (Task 1 of INSTALLER_V2_DEV_PLAN.md). The pinned version here determines which agent tarball the installer embeds; it must contain the new AgentStatus schema or the tray / menu-bar apps will not function."
+  "version": "1.1.11",
+  "_note": "This version must match the npm-published release that includes bundledDependencies. The installer build job waits for npm-publish to complete before running npm pack, so the version here should match the release being built."
 }
