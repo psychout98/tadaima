@@ -1,4 +1,4 @@
 {
-  "version": "1.1.11",
-  "_note": "This version must match the npm-published release that includes bundledDependencies. The installer build job waits for npm-publish to complete before running npm pack, so the version here should match the release being built."
+  "version": "1.0.11",
+  "_note": "Pinned agent version the installer embeds. Must be a version already published to npm when the installer CI job runs."
 }

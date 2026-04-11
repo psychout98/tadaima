@@ -52,11 +52,6 @@
     "compile:all": "pnpm run compile:darwin-arm64 && pnpm run compile:darwin-x64 && pnpm run compile:win-x64 && pnpm run compile:linux-x64",
     "compile:checksums": "cd dist && shasum -a 256 tadaima-agent-* > checksums.sha256"
   },
-  "bundledDependencies": [
-    "conf",
-    "prompts",
-    "ws"
-  ],
   "dependencies": {
     "conf": "^15.1.0",
     "prompts": "^2.4.2",
