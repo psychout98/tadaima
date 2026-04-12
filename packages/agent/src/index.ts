@@ -61,10 +61,12 @@ async function main() {
         try {
           const result = await checkForUpdate(pkg.version);
           if (result) {
-            // For npm/Docker installs where binary replacement won't work,
-            // just log an advisory
+            // Skip self-update for managed installs (macOS .pkg installer
+            // sets TADAIMA_MANAGED=1 in the LaunchAgent plist) and npm/Docker
+            // installs where binary replacement won't work.
             const isBinaryInstall = !process.argv[1]?.includes("node_modules");
-            if (!isBinaryInstall) {
+            const isManagedInstall = !!process.env.TADAIMA_MANAGED;
+            if (!isBinaryInstall || isManagedInstall) {
               logUpdateAdvisory(pkg.version, result.version);
               return;
             }

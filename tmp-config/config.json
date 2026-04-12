@@ -1,0 +1,17 @@
+{
+  "deviceId": "dbc91d0f-f28b-4a46-8d47-677379e821cd",
+  "deviceName": "MacBook-Pro-2",
+  "deviceToken": "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJjMDY4ZWYwNi04M2M0LTQ3YzYtYmNlMC0wZDE5MTY1ZGU3ZTYiLCJ0eXBlIjoiZGV2aWNlIiwiZGV2aWNlSWQiOiJkYmM5MWQwZi1mMjhiLTRhNDYtOGQ0Ny02NzczNzllODIxY2QiLCJpYXQiOjE3NzU5NjE1NDN9.BRbNIunCfHdE-oa7aqx1w8OvFHQYgxAjmf7cHfcD4MI",
+  "directories": {
+    "movies": "/Users/noahheath/Movies",
+    "staging": "/tmp/tadaima/staging",
+    "tv": "/Users/noahheath/Movies"
+  },
+  "maxConcurrentDownloads": 2,
+  "rdPollInterval": 30,
+  "realDebrid": {
+    "apiKey": "AI6LQ2GHIR4Q62BURX7IGXXBPW5VGK6FLPOD4RYPBGKS3SCPYVYA"
+  },
+  "relay": "https://tadaimarelay-production-3cc7.up.railway.app",
+  "updateChannel": "stable"
+}
