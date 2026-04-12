@@ -13,7 +13,8 @@ enum PairingClient {
     struct PairResponse: Decodable {
         let deviceId: String
         let deviceToken: String
-        let rdApiKey: String
+        /// Optional — missing when RealDebrid is not configured on the relay.
+        let rdApiKey: String?
         let wsUrl: String
         /// Client-assigned; not returned by the relay.
         var deviceName: String = ""

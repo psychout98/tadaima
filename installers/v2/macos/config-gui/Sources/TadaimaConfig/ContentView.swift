@@ -85,7 +85,7 @@ struct ContentView: View {
                 deviceToken: result.deviceToken,
                 deviceName: result.deviceName,
                 profileName: "",
-                rdApiKey: result.rdApiKey,
+                rdApiKey: result.rdApiKey ?? "",
                 movies: moviesDir,
                 tv: tvDir
             )
