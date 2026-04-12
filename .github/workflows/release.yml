@@ -162,7 +162,7 @@ jobs:
           if-no-files-found: error
 
   build-macos-installer:
-    name: Build macOS DMG (unsigned beta)
+    name: Build macOS DMG (signed + notarized)
     needs: ci
     runs-on: macos-latest
     steps:
@@ -172,7 +172,33 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Import signing certificates
+        if: "${{ secrets.APPLE_DEVELOPER_ID_APP_P12 != '' }}"
+        env:
+          APP_P12: ${{ secrets.APPLE_DEVELOPER_ID_APP_P12 }}
+          APP_P12_PASS: ${{ secrets.APPLE_DEVELOPER_ID_APP_PASSWORD }}
+          INST_P12: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_P12 }}
+          INST_P12_PASS: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          KEYCHAIN_PASS=$(openssl rand -base64 32)
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+          echo "$APP_P12" | base64 --decode > $RUNNER_TEMP/app.p12
+          echo "$INST_P12" | base64 --decode > $RUNNER_TEMP/inst.p12
+          security import $RUNNER_TEMP/app.p12 -P "$APP_P12_PASS" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security import $RUNNER_TEMP/inst.p12 -P "$INST_P12_PASS" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+
       - name: Build DMG
+        env:
+          DEVELOPER_ID_APP: ${{ secrets.APPLE_DEVELOPER_ID_APP_NAME }}
+          DEVELOPER_ID_INSTALLER: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: bash installers/v2/macos/build.sh
 
       - uses: actions/upload-artifact@v4

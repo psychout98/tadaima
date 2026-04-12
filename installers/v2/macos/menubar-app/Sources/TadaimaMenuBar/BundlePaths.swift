@@ -9,22 +9,32 @@ enum BundlePaths {
         Bundle.main.resourceURL ?? Bundle.main.bundleURL.appendingPathComponent("Contents/Resources")
     }
 
-    /// `Contents/Resources/runtime/bin/node`
-    ///
-    /// The postinstall script creates `runtime` as a symlink to either
-    /// `runtime-arm64` or `runtime-x64` depending on the installing
-    /// machine, so this path always resolves to the correct architecture.
+    /// The runtime directory name for the current machine's architecture.
+    /// Both `runtime-arm64` and `runtime-x64` are embedded in the bundle;
+    /// this picks the right one at runtime so no symlink is needed.
+    static var runtimeDirectoryName: String {
+        var info = utsname()
+        uname(&info)
+        let machine = withUnsafePointer(to: &info.machine) {
+            $0.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) {
+                String(cString: $0)
+            }
+        }
+        return machine == "arm64" ? "runtime-arm64" : "runtime-x64"
+    }
+
+    /// `Contents/Resources/runtime-{arch}/bin/node`
     static var nodeBinary: URL {
         resources
-            .appendingPathComponent("runtime")
+            .appendingPathComponent(runtimeDirectoryName)
             .appendingPathComponent("bin")
             .appendingPathComponent("node")
     }
 
-    /// `Contents/Resources/runtime/lib/node_modules/npm/bin/npm-cli.js`
+    /// `Contents/Resources/runtime-{arch}/lib/node_modules/npm/bin/npm-cli.js`
     static var npmCliJs: URL {
         resources
-            .appendingPathComponent("runtime")
+            .appendingPathComponent(runtimeDirectoryName)
             .appendingPathComponent("lib")
             .appendingPathComponent("node_modules")
             .appendingPathComponent("npm")

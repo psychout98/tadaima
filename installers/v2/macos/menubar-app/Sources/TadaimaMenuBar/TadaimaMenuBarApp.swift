@@ -4,26 +4,42 @@ import AppKit
 /// Entry point for the Tadaima menu bar app.
 ///
 /// This is the outer container for everything the installer ships:
-///   - Bundled Node runtime (Contents/Resources/runtime)
+///   - Bundled Node runtimes (Contents/Resources/runtime-arm64, runtime-x64)
 ///   - Pinned @psychout98/tadaima agent (Contents/Resources/agent)
 ///   - First-run config GUI bundle (Contents/Resources/TadaimaConfig.app)
 ///   - launchd plist template (Contents/Resources/com.tadaima.agent.plist.template)
 ///
-/// The app itself is a thin SwiftUI MenuBarExtra that reads status.json
-/// on a 2-second timer and offers Settings / Check for Updates /
-/// View Logs / Uninstall / Quit.
+/// On first launch (no config.json found), the app runs a setup flow:
+/// launches the config GUI, installs the LaunchAgent plist, and
+/// bootstraps launchd. No postinstall script needed.
+///
+/// After setup, the app is a thin SwiftUI MenuBarExtra that reads
+/// status.json on a 2-second timer and offers Settings / Check for
+/// Updates / View Logs / Uninstall / Quit.
 @main
 struct TadaimaMenuBarApp: App {
     @StateObject private var poller: StatusPoller
+    @State private var needsSetup: Bool
+    @State private var setupError: String?
+    @State private var isRunningSetup = false
 
     init() {
         let cfg = TrayConfig.load()
         _poller = StateObject(wrappedValue: StatusPoller(trayConfig: cfg))
+        _needsSetup = State(initialValue: FirstRunSetup.isNeeded)
     }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent(poller: poller)
+            if needsSetup {
+                SetupMenuContent(
+                    isRunningSetup: $isRunningSetup,
+                    setupError: $setupError,
+                    onRunSetup: { runFirstTimeSetup() }
+                )
+            } else {
+                MenuBarContent(poller: poller)
+            }
         } label: {
             StatusDotLabel(snapshot: poller.snapshot)
         }
@@ -32,6 +48,50 @@ struct TadaimaMenuBarApp: App {
         Settings {
             SettingsView()
         }
+    }
+
+    private func runFirstTimeSetup() {
+        isRunningSetup = true
+        setupError = nil
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                try FirstRunSetup.run()
+                DispatchQueue.main.async {
+                    isRunningSetup = false
+                    needsSetup = false
+                    poller.start()
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    isRunningSetup = false
+                    setupError = error.localizedDescription
+                }
+            }
+        }
+    }
+}
+
+/// Menu content shown when first-run setup is needed.
+private struct SetupMenuContent: View {
+    @Binding var isRunningSetup: Bool
+    @Binding var setupError: String?
+    let onRunSetup: () -> Void
+
+    var body: some View {
+        Text("Tadaima").font(.headline)
+        if isRunningSetup {
+            Text("Running setup…").font(.footnote).foregroundColor(.secondary)
+        } else {
+            Text("Setup required").font(.footnote).foregroundColor(.secondary)
+            Button("Run Setup…") { onRunSetup() }
+        }
+        if let err = setupError {
+            Divider()
+            Text(err).font(.footnote).foregroundColor(.red)
+        }
+        Divider()
+        Button("Quit") { NSApplication.shared.terminate(nil) }
+            .keyboardShortcut("q")
     }
 }
 

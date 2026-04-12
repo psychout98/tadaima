@@ -3,16 +3,15 @@
   Distribution definition for Tadaima-Setup.pkg.
 
   This wraps the single component .pkg (Tadaima.app under /Applications)
-  into a distribution-style installer so we can attach a postinstall
-  script. The app installs to /Applications (system domain only) because
-  the postinstall script hardcodes that path for runtime setup, service
-  registration, and config GUI launch.
+  into a distribution-style installer. The pkg is a pure payload
+  delivery mechanism — no scripts. All setup happens in the menu bar
+  app's first-launch flow (FirstRunSetup.swift).
 -->
 <installer-gui-script minSpecVersion="2">
     <title>Tadaima</title>
     <organization>com.tadaima</organization>
     <domains enable_localSystem="true"/>
-    <options customize="never" require-scripts="true" rootVolumeOnly="true"/>
+    <options customize="never" rootVolumeOnly="true"/>
     <pkg-ref id="com.tadaima.app"
              version="0.1.0"
              onConclusion="none">Tadaima.pkg</pkg-ref>

@@ -1,13 +1,20 @@
 #!/bin/bash
 # installers/v2/macos/build.sh — entry point for the macOS installer build.
 #
-# Produces (unsigned, beta-grade):
-#   dist/Tadaima-Setup.pkg
-#   dist/Tadaima-Setup.dmg
+# Produces:
+#   dist/Tadaima-Setup.pkg   (signed + notarized if certs are available)
+#   dist/Tadaima-Setup.dmg   (signed + notarized if certs are available)
 #
-# All signing calls (codesign, productsign, notarytool, stapler) are
-# intentionally omitted. Adding them is a pipeline-only change tracked in
-# specs/CODE_SIGNING_INSTRUCTIONS.md.
+# The .pkg is a pure payload installer — no postinstall scripts. All
+# setup (config GUI, launchd, login item) is handled by the menu bar
+# app's first-launch flow (FirstRunSetup.swift).
+#
+# Signing + notarization are enabled when these env vars are set:
+#   DEVELOPER_ID_APP        — "Developer ID Application: Name (TEAMID)"
+#   DEVELOPER_ID_INSTALLER  — "Developer ID Installer: Name (TEAMID)"
+#   APPLE_ID                — Apple ID email for notarization
+#   APPLE_APP_PASSWORD      — App-specific password for notarization
+#   APPLE_TEAM_ID           — 10-char Apple Team ID
 
 set -euo pipefail
 
@@ -111,13 +118,37 @@ cat > "$APP/Contents/Info.plist" << 'EOF'
 </plist>
 EOF
 
-# Copy bundled Node runtimes (both archs) + agent tarball + config GUI +
+# Copy bundled Node runtimes (both archs) + config GUI +
 # launchd plist template into Contents/Resources.
 cp -R "$ARM64_NODE" "$APP/Contents/Resources/runtime-arm64"
 cp -R "$X64_NODE"   "$APP/Contents/Resources/runtime-x64"
-cp "$TARBALL" "$APP/Contents/Resources/agent-tarball.tgz"
 cp -R "$CONFIG_APP" "$APP/Contents/Resources/TadaimaConfig.app"
 cp "$ROOT/pkg/com.tadaima.agent.plist.template" "$APP/Contents/Resources/"
+
+# ── Build-time agent install ────────────────────────────────────────
+# Install the agent from the bundled tarball at build time so that
+# dependencies are fetched on CI (reliable network) rather than at
+# install time on the user's machine. The result is fully self-contained.
+echo "[build.sh] installing agent from tarball (build-time npm install)"
+AGENT_DIR="$APP/Contents/Resources/agent"
+mkdir -p "$AGENT_DIR"
+"$ARM64_NODE/bin/node" \
+    "$ARM64_NODE/lib/node_modules/npm/bin/npm-cli.js" \
+    install -g \
+    --prefix "$AGENT_DIR" \
+    "$TARBALL"
+
+# The tarball is no longer needed in the bundle.
+# (It was copied earlier but we only need the installed result.)
+
+# Verify the agent installed correctly.
+if [ ! -f "$AGENT_DIR/bin/tadaima" ]; then
+    echo "[build.sh] FATAL: agent binary not found after npm install" >&2
+    echo "  expected: $AGENT_DIR/bin/tadaima" >&2
+    ls -la "$AGENT_DIR/bin/" 2>/dev/null || echo "  (bin/ does not exist)" >&2
+    exit 1
+fi
+echo "[build.sh] agent installed: $AGENT_DIR/bin/tadaima"
 
 # Write tray-config.json with the heartbeat interval so the menu bar app
 # can compute its staleness threshold. We read the canonical value from
@@ -135,15 +166,51 @@ cat > "$APP/Contents/Resources/tray-config.json" << EOF
 }
 EOF
 
-# Build the .pkg. We use pkgbuild for the component (Tadaima.app under
-# /Applications) + productbuild for the distribution wrapper.
+# ── Code signing ────────────────────────────────────────────────────
+# Sign all binaries inside-out when Developer ID certs are available.
+# Without these env vars, the build produces unsigned artifacts (fine
+# for local testing).
+ENTITLEMENTS="$ROOT/entitlements.plist"
+if [ -n "${DEVELOPER_ID_APP:-}" ]; then
+    echo "[build.sh] signing binaries with: $DEVELOPER_ID_APP"
+
+    # 1. Sign each Node runtime binary (needs entitlements for V8 JIT)
+    find "$APP/Contents/Resources/runtime-arm64" "$APP/Contents/Resources/runtime-x64" \
+        -type f -perm +111 -name 'node' | while read -r bin; do
+        echo "  signing: $bin"
+        codesign --force --options runtime --timestamp \
+            --entitlements "$ENTITLEMENTS" \
+            --sign "$DEVELOPER_ID_APP" \
+            "$bin"
+    done
+
+    # 2. Sign the config GUI app bundle
+    echo "  signing: TadaimaConfig.app"
+    codesign --force --options runtime --timestamp --deep \
+        --sign "$DEVELOPER_ID_APP" \
+        "$APP/Contents/Resources/TadaimaConfig.app"
+
+    # 3. Sign the outer Tadaima.app bundle (deep catches remaining files)
+    echo "  signing: Tadaima.app"
+    codesign --force --options runtime --timestamp --deep \
+        --entitlements "$ENTITLEMENTS" \
+        --sign "$DEVELOPER_ID_APP" \
+        "$APP"
+
+    echo "[build.sh] signing complete"
+else
+    echo "[build.sh] DEVELOPER_ID_APP not set — skipping code signing"
+fi
+
+# ── Build the .pkg ──────────────────────────────────────────────────
+# Pure payload package — no scripts. Tadaima.app is installed to
+# /Applications; all setup happens in the app's first-launch flow.
 COMPONENT_PKG="$STAGING/Tadaima.pkg"
 pkgbuild \
     --identifier com.tadaima.app \
     --version 0.1.0 \
     --install-location /Applications \
     --component "$APP" \
-    --scripts "$ROOT/pkg/scripts" \
     "$COMPONENT_PKG"
 
 PKG="$DIST/Tadaima-Setup.pkg"
@@ -152,8 +219,31 @@ productbuild \
     --package-path "$STAGING" \
     "$PKG"
 
-# Wrap the pkg in a dmg. hdiutil create with -srcfolder creates a
-# read-only compressed image.
+# Sign the .pkg with the Developer ID Installer cert.
+if [ -n "${DEVELOPER_ID_INSTALLER:-}" ]; then
+    echo "[build.sh] signing pkg with: $DEVELOPER_ID_INSTALLER"
+    SIGNED_PKG="$DIST/Tadaima-Setup-signed.pkg"
+    productsign --sign "$DEVELOPER_ID_INSTALLER" --timestamp "$PKG" "$SIGNED_PKG"
+    mv "$SIGNED_PKG" "$PKG"
+fi
+
+# ── Notarization ────────────────────────────────────────────────────
+# Submit to Apple for notarization when credentials are available.
+if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+    echo "[build.sh] notarizing pkg"
+    xcrun notarytool submit "$PKG" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_APP_PASSWORD" \
+        --team-id "$APPLE_TEAM_ID" \
+        --wait
+
+    echo "[build.sh] stapling notarization ticket to pkg"
+    xcrun stapler staple "$PKG"
+else
+    echo "[build.sh] APPLE_ID/APPLE_APP_PASSWORD/APPLE_TEAM_ID not set — skipping notarization"
+fi
+
+# ── Wrap in DMG ─────────────────────────────────────────────────────
 DMG="$DIST/Tadaima-Setup.dmg"
 DMG_STAGING="$STAGING/dmg-root"
 mkdir -p "$DMG_STAGING"
@@ -164,6 +254,19 @@ hdiutil create \
     -ov \
     -format UDZO \
     "$DMG"
+
+# Notarize the DMG separately (it's a different format than the pkg).
+if [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_APP_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ]; then
+    echo "[build.sh] notarizing dmg"
+    xcrun notarytool submit "$DMG" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_APP_PASSWORD" \
+        --team-id "$APPLE_TEAM_ID" \
+        --wait
+
+    echo "[build.sh] stapling notarization ticket to dmg"
+    xcrun stapler staple "$DMG"
+fi
 
 echo "[build.sh] done"
 echo "  pkg: $PKG"
