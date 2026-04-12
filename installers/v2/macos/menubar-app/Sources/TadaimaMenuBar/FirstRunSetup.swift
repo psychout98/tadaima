@@ -4,47 +4,58 @@ import ServiceManagement
 /// Handles first-launch setup when the user opens Tadaima.app for the
 /// first time after installation. Replaces the old postinstall script.
 ///
-/// The .pkg installer only copies Tadaima.app to /Applications. All
-/// setup — config GUI, launchd registration, login item — happens here
-/// in userland (no root privileges required).
+/// The .pkg installer only copies Tadaima.app to /Applications (read-only,
+/// root-owned). All mutable data lives in user-writable locations:
+///   - Agent install: ~/Library/Application Support/tadaima/agent/
+///   - Config:        ~/Library/Preferences/tadaima-nodejs/
+///   - LaunchAgent:   ~/Library/LaunchAgents/com.tadaima.agent.plist
+///   - Logs:          ~/Library/Logs/Tadaima/
 enum FirstRunSetup {
     enum SetupError: Error, LocalizedError {
         case configGuiMissing
         case configGuiCancelled
         case plistTemplateMissing
-        case plistRenderFailed
+        case agentCopyFailed(String)
 
         var errorDescription: String? {
             switch self {
             case .configGuiMissing:
                 return "TadaimaConfig.app is missing from the application bundle."
             case .configGuiCancelled:
-                return "Setup was cancelled. Tadaima needs to be configured before it can run. Relaunch the app to try again."
+                return "Setup was cancelled. Relaunch the app to try again."
             case .plistTemplateMissing:
                 return "LaunchAgent plist template is missing from the application bundle."
-            case .plistRenderFailed:
-                return "Failed to write the LaunchAgent plist."
+            case .agentCopyFailed(let detail):
+                return "Failed to install agent: \(detail)"
             }
         }
     }
 
     /// Returns true if first-run setup has not been completed yet.
-    /// Checks for the existence of the agent config file.
+    /// Checks for config file, user-writable agent binary, AND launchd plist.
+    /// All three must exist for setup to be considered complete.
     static var isNeeded: Bool {
-        ConfigPaths.configFile() == nil
+        let fm = FileManager.default
+        let configExists = ConfigPaths.configFile() != nil
+        let agentExists = fm.fileExists(atPath: BundlePaths.agentBinary.path)
+        let plistExists = fm.fileExists(atPath: BundlePaths.launchAgentPlist.path)
+        return !configExists || !agentExists || !plistExists
     }
 
-    /// Runs the full first-launch setup flow. Call from the main app
-    /// when `isNeeded` returns true.
+    /// Runs the full first-launch setup flow.
     ///
     /// Steps:
-    /// 1. Create the log directory
-    /// 2. Launch the config GUI and wait for the user to complete pairing
-    /// 3. Render and install the launchd plist
-    /// 4. Bootstrap the LaunchAgent
-    /// 5. Register as a login item
+    /// 1. Copy the bundled agent to the user-writable location
+    /// 2. Create the log directory
+    /// 3. Launch the config GUI and wait for the user to complete pairing
+    /// 4. Render and install the launchd plist
+    /// 5. Bootstrap the LaunchAgent
+    /// 6. Register as a login item
     static func run() throws {
-        // 1. Create log directory (user-owned, no root needed)
+        // 1. Copy bundled agent to user-writable location
+        try installAgentFromBundle()
+
+        // 2. Create log directory (user-owned, no root needed)
         let logDir = BundlePaths.agentLog.deletingLastPathComponent()
         try FileManager.default.createDirectory(
             at: logDir,
@@ -52,20 +63,55 @@ enum FirstRunSetup {
             attributes: nil
         )
 
-        // 2. Launch config GUI and wait for completion
-        try launchConfigGUI()
+        // 3. Launch config GUI and wait for completion (skip if already configured)
+        if ConfigPaths.configFile() == nil {
+            try launchConfigGUI()
+        }
 
-        // 3. Render and install the LaunchAgent plist
+        // 4. Render and install the LaunchAgent plist
         try installLaunchAgent()
 
-        // 4. Bootstrap the LaunchAgent via launchctl
+        // 5. Bootstrap the LaunchAgent via launchctl
         bootstrapLaunchAgent()
 
-        // 5. Register as login item so the menu bar app starts on login
+        // 6. Register as login item so the menu bar app starts on login
         registerLoginItem()
     }
 
     // MARK: - Private
+
+    /// Copies the pre-installed agent from the read-only app bundle to the
+    /// user-writable location at ~/Library/Application Support/tadaima/agent/.
+    /// If the destination already exists, it is replaced (handles upgrades).
+    private static func installAgentFromBundle() throws {
+        let fm = FileManager.default
+        let source = BundlePaths.bundledAgentPrefix
+        let dest = BundlePaths.agentPrefix
+
+        guard fm.fileExists(atPath: source.path) else {
+            throw SetupError.agentCopyFailed("Bundled agent not found at \(source.path)")
+        }
+
+        // Create parent directory
+        try fm.createDirectory(
+            at: dest.deletingLastPathComponent(),
+            withIntermediateDirectories: true,
+            attributes: nil
+        )
+
+        // Remove existing agent if present (clean slate for upgrades)
+        if fm.fileExists(atPath: dest.path) {
+            try fm.removeItem(at: dest)
+        }
+
+        // Copy the entire agent directory tree
+        try fm.copyItem(at: source, to: dest)
+
+        // Verify the binary landed
+        guard fm.fileExists(atPath: BundlePaths.agentBinary.path) else {
+            throw SetupError.agentCopyFailed("Agent binary missing after copy")
+        }
+    }
 
     private static func launchConfigGUI() throws {
         let configApp = BundlePaths.resources
@@ -75,8 +121,6 @@ enum FirstRunSetup {
             throw SetupError.configGuiMissing
         }
 
-        // Use /usr/bin/open -W to launch the config app and block until
-        // it exits. This runs in the user's GUI session (no root needed).
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         proc.arguments = ["-W", configApp.path]
@@ -100,9 +144,6 @@ enum FirstRunSetup {
         let template = try String(contentsOf: templateURL, encoding: .utf8)
 
         // Substitute placeholders with actual paths.
-        // __NODE_BIN__: arch-appropriate bundled Node binary
-        // __AGENT_ENTRY__: the installed agent CLI entry point
-        // __LOG_PATH__: user's log file path
         let rendered = template
             .replacingOccurrences(of: "__NODE_BIN__", with: BundlePaths.nodeBinary.path)
             .replacingOccurrences(of: "__AGENT_ENTRY__", with: BundlePaths.agentBinary.path)
@@ -116,7 +157,6 @@ enum FirstRunSetup {
             attributes: nil
         )
 
-        // Write the rendered plist atomically
         try rendered.write(
             to: BundlePaths.launchAgentPlist,
             atomically: true,
@@ -134,7 +174,6 @@ enum FirstRunSetup {
             ["bootout", "gui/\(uid)", plistPath]
         )
 
-        // bootstrap to start the agent
         Shell.run(
             URL(fileURLWithPath: "/bin/launchctl"),
             ["bootstrap", "gui/\(uid)", plistPath]

@@ -42,13 +42,34 @@ enum BundlePaths {
             .appendingPathComponent("npm-cli.js")
     }
 
-    /// Prefix used for the `npm install -g --prefix …` call. The installed
-    /// agent ends up at `<prefix>/bin/tadaima`.
-    static var agentPrefix: URL {
+    // MARK: - Bundled agent (read-only, factory default inside app bundle)
+
+    /// The pre-installed agent inside the signed app bundle. This is the
+    /// factory default installed at build time. It is read-only because
+    /// the bundle is root-owned after pkg installation.
+    static var bundledAgentPrefix: URL {
         resources.appendingPathComponent("agent")
     }
 
-    /// Absolute path to the installed `tadaima` entry point.
+    // MARK: - User-writable agent (for updates and runtime use)
+
+    /// User-writable support directory for mutable Tadaima data.
+    /// `~/Library/Application Support/tadaima/`
+    static var supportDir: URL {
+        FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library")
+            .appendingPathComponent("Application Support")
+            .appendingPathComponent("tadaima")
+    }
+
+    /// User-writable agent prefix. First-run setup copies the bundled
+    /// agent here; updates write here too. The launchd plist and all
+    /// runtime references use this location.
+    static var agentPrefix: URL {
+        supportDir.appendingPathComponent("agent")
+    }
+
+    /// Absolute path to the user-writable `tadaima` entry point.
     static var agentBinary: URL {
         agentPrefix.appendingPathComponent("bin").appendingPathComponent("tadaima")
     }
