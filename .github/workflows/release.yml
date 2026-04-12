@@ -173,13 +173,16 @@ jobs:
           node-version: "20"
 
       - name: Import signing certificates
-        if: "${{ secrets.APPLE_DEVELOPER_ID_APP_P12 != '' }}"
         env:
           APP_P12: ${{ secrets.APPLE_DEVELOPER_ID_APP_P12 }}
           APP_P12_PASS: ${{ secrets.APPLE_DEVELOPER_ID_APP_PASSWORD }}
           INST_P12: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_P12 }}
           INST_P12_PASS: ${{ secrets.APPLE_DEVELOPER_ID_INSTALLER_PASSWORD }}
         run: |
+          if [ -z "$APP_P12" ]; then
+            echo "No signing certificates configured — skipping"
+            exit 0
+          fi
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
           KEYCHAIN_PASS=$(openssl rand -base64 32)
           security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
